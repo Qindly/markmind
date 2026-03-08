@@ -1,4 +1,4 @@
-// authStore.ts - ????????? Access Token ???
+// authStore.ts - 管理鉴权状态与 Access Token 持久化
 import { create } from 'zustand';
 
 import type { AuthUser } from '../types/auth';
@@ -46,8 +46,8 @@ export interface AuthState {
   finishBootstrap: () => void;
 }
 
-// useAuthStore - ???????????
-// ????Zustand ??????
+// useAuthStore - 管理当前用户与全局鉴权状态
+// 使用 Zustand 统一维护登录态与会话恢复结果
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: readAccessToken(),
   user: null,

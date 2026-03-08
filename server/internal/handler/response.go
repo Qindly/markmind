@@ -1,4 +1,4 @@
-// response.go - ???? API ???????
+// response.go - 统一处理 API 成功与失败响应
 package handler
 
 import (
@@ -15,11 +15,10 @@ type apiResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-// WriteSuccess - ????????
-// ?? ctx: Gin ?????
-// ?? status: HTTP ???
-// ?? data: ?????
-// ?????
+// WriteSuccess - 按统一格式返回成功响应。
+// 参数 ctx: Gin 上下文。
+// 参数 status: HTTP 状态码。
+// 参数 data: 成功响应的数据体。
 func WriteSuccess(ctx *gin.Context, status int, data any) {
 	ctx.JSON(status, apiResponse{
 		Code:    appconst.SuccessCode,
@@ -28,12 +27,11 @@ func WriteSuccess(ctx *gin.Context, status int, data any) {
 	})
 }
 
-// WriteError - ????????
-// ?? ctx: Gin ?????
-// ?? status: HTTP ???
-// ?? code: ?????
-// ?? message: ????
-// ?????
+// WriteError - 按统一格式返回失败响应。
+// 参数 ctx: Gin 上下文。
+// 参数 status: HTTP 状态码。
+// 参数 code: 业务错误码。
+// 参数 message: 面向客户端的错误消息。
 func WriteError(ctx *gin.Context, status int, code int, message string) {
 	ctx.JSON(status, apiResponse{
 		Code:    code,
@@ -41,6 +39,9 @@ func WriteError(ctx *gin.Context, status int, code int, message string) {
 	})
 }
 
+// mapBusinessError - 将业务错误映射为 HTTP 状态码与统一响应内容。
+// 参数 err: 业务层返回的错误。
+// 返回值依次为 HTTP 状态码、业务错误码、错误消息。
 func mapBusinessError(err error) (int, int, string) {
 	switch {
 	case errors.Is(err, appconst.ErrInvalidParams):
@@ -60,6 +61,6 @@ func mapBusinessError(err error) (int, int, string) {
 	case errors.Is(err, appconst.ErrRateLimitExceeded):
 		return http.StatusTooManyRequests, appconst.ErrCodeTooManyRequests, err.Error()
 	default:
-		return http.StatusInternalServerError, appconst.ErrCodeInternalServer, "?????????????"
+		return http.StatusInternalServerError, appconst.ErrCodeInternalServer, "服务器内部错误"
 	}
 }

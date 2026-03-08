@@ -1,4 +1,4 @@
-// main.go - MarkMind API ????
+// main.go - MarkMind API 服务入口
 package main
 
 import (
@@ -18,30 +18,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// main - ???????? HTTP ??
-// ???????????????????
+// main - 初始化依赖并启动 HTTP 服务。
+// 同时负责处理优雅退出，确保数据库与 Redis 连接能够正常关闭。
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("????????: %v", err)
+		log.Fatalf("加载配置失败: %v", err)
 	}
 
 	pool, err := repository.NewPostgresPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("??? PostgreSQL ??: %v", err)
+		log.Fatalf("初始化 PostgreSQL 连接失败: %v", err)
 	}
 	defer pool.Close()
 
 	if err := repository.RunMigrations(ctx, pool, "migrations"); err != nil {
-		log.Fatalf("?????????: %v", err)
+		log.Fatalf("执行数据库迁移失败: %v", err)
 	}
 
 	redisClient, err := repository.NewRedisClient(ctx, cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	if err != nil {
-		log.Fatalf("??? Redis ??: %v", err)
+		log.Fatalf("初始化 Redis 连接失败: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -59,7 +59,7 @@ func main() {
 
 	router, err := handler.NewRouter(cfg, authHandler, authMiddleware, rateLimitMiddleware)
 	if err != nil {
-		log.Fatalf("???????????: %v", err)
+		log.Fatalf("初始化路由失败: %v", err)
 	}
 
 	server := &http.Server{
@@ -74,12 +74,12 @@ func main() {
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			log.Printf("?? HTTP ????: %v", err)
+			log.Printf("关闭 HTTP 服务失败: %v", err)
 		}
 	}()
 
-	log.Printf("MarkMind API ???? :%s", cfg.ServerPort)
+	log.Printf("MarkMind API 启动成功，监听端口 :%s", cfg.ServerPort)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("?? HTTP ????: %v", err)
+		log.Fatalf("启动 HTTP 服务失败: %v", err)
 	}
 }

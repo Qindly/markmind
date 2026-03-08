@@ -1,11 +1,11 @@
-// useAuthBootstrap.ts - ????????????????
+// useAuthBootstrap.ts - 负责在应用启动时恢复登录态
 import { useEffect } from 'react';
 
 import { fetchCurrentUser, refreshSession } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
 
-// useAuthBootstrap - ? sessionStorage ? Refresh Token ?????
-// ?????
+// useAuthBootstrap - 优先使用现有 Access Token 恢复当前会话
+// 如果 Access Token 已失效，则回退到 Refresh Token 刷新流程
 export function useAuthBootstrap() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const isBootstrapping = useAuthStore((state) => state.isBootstrapping);

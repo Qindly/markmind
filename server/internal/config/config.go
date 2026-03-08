@@ -1,4 +1,4 @@
-// config.go - ?????????????
+// config.go - 负责加载并校验服务端运行配置
 package config
 
 import (
@@ -23,7 +23,7 @@ const (
 	defaultAuthRateLimitMax    = 10
 )
 
-// Config - ????????
+// Config - 服务端运行时所需的配置集合。
 type Config struct {
 	AppEnv                  string
 	ServerPort              string
@@ -46,8 +46,8 @@ type Config struct {
 	AuthRateLimitMaxRequest int
 }
 
-// Load - ??????????????
-// ??????????????
+// Load - 从环境变量加载配置并执行必要校验。
+// 返回值为完整配置与可能出现的错误。
 func Load() (Config, error) {
 	appEnv, _ := getEnvWithFlag("APP_ENV", "")
 	ginMode, _ := getEnvWithFlag("GIN_MODE", defaultGinMode)
@@ -99,7 +99,7 @@ func Load() (Config, error) {
 	if jwtSecret == "" && !isProduction(appEnv, ginMode) {
 		jwtSecret, err = generateDevelopmentSecret()
 		if err != nil {
-			return Config{}, fmt.Errorf("?????? JWT ????: %w", err)
+			return Config{}, fmt.Errorf("生成开发环境 JWT 密钥失败: %w", err)
 		}
 	}
 
@@ -132,23 +132,23 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-// IsProduction - ??????????????
-// ????????????? true
+// IsProduction - 判断当前配置是否处于生产环境。
+// 当 APP_ENV 为 production 或 GIN_MODE 为 release 时返回 true。
 func (config Config) IsProduction() bool {
 	return isProduction(config.AppEnv, config.GinMode)
 }
 
 func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSecret bool, hasFrontendOrigin bool) error {
 	if cfg.AuthRateLimitWindow <= 0 {
-		return fmt.Errorf("AUTH_RATE_LIMIT_WINDOW ???? 0")
+		return fmt.Errorf("AUTH_RATE_LIMIT_WINDOW 必须大于 0")
 	}
 
 	if cfg.AuthRateLimitMaxRequest <= 0 {
-		return fmt.Errorf("AUTH_RATE_LIMIT_MAX_REQUESTS ???? 0")
+		return fmt.Errorf("AUTH_RATE_LIMIT_MAX_REQUESTS 必须大于 0")
 	}
 
 	if strings.TrimSpace(cfg.RefreshCookieName) == "" {
-		return fmt.Errorf("REFRESH_COOKIE_NAME ????")
+		return fmt.Errorf("REFRESH_COOKIE_NAME 不能为空")
 	}
 
 	if !cfg.IsProduction() {
@@ -156,23 +156,23 @@ func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSe
 	}
 
 	if !hasDatabaseURL {
-		return fmt.Errorf("?????????? DATABASE_URL")
+		return fmt.Errorf("生产环境必须显式配置 DATABASE_URL")
 	}
 
 	if !hasRedisAddr {
-		return fmt.Errorf("?????????? REDIS_ADDR")
+		return fmt.Errorf("生产环境必须显式配置 REDIS_ADDR")
 	}
 
 	if !hasJWTSecret || strings.TrimSpace(cfg.JWTSecret) == "" {
-		return fmt.Errorf("?????????? JWT_SECRET")
+		return fmt.Errorf("生产环境必须显式配置 JWT_SECRET")
 	}
 
 	if !hasFrontendOrigin {
-		return fmt.Errorf("?????????? FRONTEND_ORIGIN")
+		return fmt.Errorf("生产环境必须显式配置 FRONTEND_ORIGIN")
 	}
 
 	if !cfg.CookieSecure {
-		return fmt.Errorf("???????? COOKIE_SECURE=true")
+		return fmt.Errorf("生产环境必须设置 COOKIE_SECURE=true")
 	}
 
 	return nil
@@ -232,7 +232,7 @@ func getEnvAsInt(key string, fallback int) (int, error) {
 
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("%s ??????: %w", key, err)
+		return 0, fmt.Errorf("%s 解析为整数失败: %w", key, err)
 	}
 
 	return parsed, nil
@@ -246,7 +246,7 @@ func getEnvAsBool(key string, fallback bool) (bool, error) {
 
 	parsed, err := strconv.ParseBool(value)
 	if err != nil {
-		return false, fmt.Errorf("%s ???????: %w", key, err)
+		return false, fmt.Errorf("%s 解析为布尔值失败: %w", key, err)
 	}
 
 	return parsed, nil
@@ -260,7 +260,7 @@ func getEnvAsDuration(key string, fallback time.Duration) (time.Duration, error)
 
 	parsed, err := time.ParseDuration(value)
 	if err != nil {
-		return 0, fmt.Errorf("%s ????????: %w", key, err)
+		return 0, fmt.Errorf("%s 解析为时间长度失败: %w", key, err)
 	}
 
 	return parsed, nil
