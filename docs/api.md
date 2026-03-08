@@ -360,3 +360,148 @@
   "message": "文件夹不存在"
 }
 ```
+
+### 修改文件夹
+- **请求方式**：PUT
+- **路由**：`/api/v1/folders/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文件夹 ID |
+| name | body(json) | string | 是 | 新的文件夹名称，长度 1~64 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "folder": {
+      "id": 1,
+      "name": "新的文件夹名称",
+      "created_at": "2026-03-08T12:00:00Z",
+      "updated_at": "2026-03-08T13:00:00Z"
+    }
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40006,
+  "message": "文件夹不存在"
+}
+```
+
+### 删除文件夹
+- **请求方式**：DELETE
+- **路由**：`/api/v1/folders/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文件夹 ID |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "deleted_id": 1
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40009,
+  "message": "文件夹下仍有文档，无法删除"
+}
+```
+
+### 修改文档标题
+- **请求方式**：PUT
+- **路由**：`/api/v1/documents/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+| title | body(json) | string | 是 | 新的文档标题，长度 1~120 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": 1,
+      "title": "新的文档标题",
+      "created_at": "2026-03-08T12:10:00Z",
+      "updated_at": "2026-03-08T13:10:00Z"
+    }
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```
+
+### 删除文档
+- **请求方式**：DELETE
+- **路由**：`/api/v1/documents/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "deleted_id": 11
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```

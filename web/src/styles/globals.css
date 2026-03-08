@@ -1,4 +1,4 @@
-/* globals.css - 定义全局三层容器主题变量与基础排版 */
+/* globals.css - 定义全局配色变量与基础排版 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,6 +30,10 @@
   --color-danger-border: #e3c8c3;
   --color-danger-soft: #fcf1ef;
   --color-danger-text: #9a4d45;
+  --color-toast-danger-bg: #f9ecec;
+  --color-toast-danger-border: #b53333;
+  --color-toast-danger-text: #ba2424;
+  --color-overlay: rgba(20, 20, 19, 0.16);
 }
 
 body {

@@ -1,4 +1,4 @@
-// dashboard_service.go - 编排首页列表与创建文件夹/文档的业务逻辑
+// dashboard_service.go - 编排首页列表与文件夹/文档管理的业务逻辑
 package service
 
 import (
@@ -14,11 +14,15 @@ import (
 
 const defaultDocumentTitle = "未命名文档"
 
-// DashboardServicer - 首页业务服务接口
+// DashboardServicer - 首页业务服务接口。
 type DashboardServicer interface {
 	GetDashboard(ctx context.Context, userID int64) (*dto.DashboardResponse, error)
 	CreateFolder(ctx context.Context, userID int64, request dto.CreateFolderRequest) (*dto.CreateFolderResponse, error)
+	UpdateFolder(ctx context.Context, userID int64, folderID int64, request dto.UpdateFolderRequest) (*dto.UpdateFolderResponse, error)
+	DeleteFolder(ctx context.Context, userID int64, folderID int64) (*dto.DeleteFolderResponse, error)
 	CreateDocument(ctx context.Context, userID int64, request dto.CreateDocumentRequest) (*dto.CreateDocumentResponse, error)
+	UpdateDocument(ctx context.Context, userID int64, documentID int64, request dto.UpdateDocumentRequest) (*dto.UpdateDocumentResponse, error)
+	DeleteDocument(ctx context.Context, userID int64, documentID int64) (*dto.DeleteDocumentResponse, error)
 }
 
 type dashboardService struct {
@@ -26,10 +30,10 @@ type dashboardService struct {
 	documentRepository repository.DocumentRepository
 }
 
-// NewDashboardService - 创建首页业务服务实现
-// 参数 folderRepository: 文件夹仓储
-// 参数 documentRepository: 文档仓储
-// 返回值：首页业务服务实例
+// NewDashboardService - 创建首页业务服务实现。
+// 参数 folderRepository: 文件夹仓储。
+// 参数 documentRepository: 文档仓储。
+// 返回值：首页业务服务实例。
 func NewDashboardService(
 	folderRepository repository.FolderRepository,
 	documentRepository repository.DocumentRepository,
@@ -86,6 +90,51 @@ func (service *dashboardService) CreateFolder(ctx context.Context, userID int64,
 	}, nil
 }
 
+func (service *dashboardService) UpdateFolder(ctx context.Context, userID int64, folderID int64, request dto.UpdateFolderRequest) (*dto.UpdateFolderResponse, error) {
+	if folderID <= 0 {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	name := strings.TrimSpace(request.Name)
+	if name == "" {
+		return nil, appconst.ErrFolderNameRequired
+	}
+
+	updatedFolder, err := service.folderRepository.UpdateFolderNameByIDAndUserID(ctx, folderID, userID, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.UpdateFolderResponse{
+		Folder: toFolderSummary(*updatedFolder),
+	}, nil
+}
+
+func (service *dashboardService) DeleteFolder(ctx context.Context, userID int64, folderID int64) (*dto.DeleteFolderResponse, error) {
+	if folderID <= 0 {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	if _, err := service.folderRepository.FindFolderByIDAndUserID(ctx, folderID, userID); err != nil {
+		return nil, err
+	}
+
+	documentCount, err := service.documentRepository.CountDocumentsByFolderIDAndUserID(ctx, folderID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("校验文件夹是否可删除失败: %w", err)
+	}
+
+	if documentCount > 0 {
+		return nil, appconst.ErrFolderNotEmpty
+	}
+
+	if err := service.folderRepository.DeleteFolderByIDAndUserID(ctx, folderID, userID); err != nil {
+		return nil, err
+	}
+
+	return &dto.DeleteFolderResponse{DeletedID: folderID}, nil
+}
+
 func (service *dashboardService) CreateDocument(ctx context.Context, userID int64, request dto.CreateDocumentRequest) (*dto.CreateDocumentResponse, error) {
 	if request.FolderID != nil {
 		if *request.FolderID <= 0 {
@@ -115,6 +164,38 @@ func (service *dashboardService) CreateDocument(ctx context.Context, userID int6
 	return &dto.CreateDocumentResponse{
 		Document: toDocumentSummary(*createdDocument),
 	}, nil
+}
+
+func (service *dashboardService) UpdateDocument(ctx context.Context, userID int64, documentID int64, request dto.UpdateDocumentRequest) (*dto.UpdateDocumentResponse, error) {
+	if documentID <= 0 {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	title := strings.TrimSpace(request.Title)
+	if title == "" {
+		return nil, appconst.ErrDocumentTitleRequired
+	}
+
+	updatedDocument, err := service.documentRepository.UpdateDocumentTitleByIDAndUserID(ctx, documentID, userID, title)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.UpdateDocumentResponse{
+		Document: toDocumentSummary(*updatedDocument),
+	}, nil
+}
+
+func (service *dashboardService) DeleteDocument(ctx context.Context, userID int64, documentID int64) (*dto.DeleteDocumentResponse, error) {
+	if documentID <= 0 {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	if err := service.documentRepository.DeleteDocumentByIDAndUserID(ctx, documentID, userID); err != nil {
+		return nil, err
+	}
+
+	return &dto.DeleteDocumentResponse{DeletedID: documentID}, nil
 }
 
 func toFolderSummary(folder model.Folder) dto.FolderSummaryResponse {

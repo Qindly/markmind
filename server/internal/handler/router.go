@@ -41,7 +41,11 @@ func NewRouter(
 	{
 		protected.GET("/dashboard", dashboardHandler.GetDashboard)
 		protected.POST("/folders", dashboardHandler.CreateFolder)
+		protected.PUT("/folders/:id", dashboardHandler.UpdateFolder)
+		protected.DELETE("/folders/:id", dashboardHandler.DeleteFolder)
 		protected.POST("/documents", dashboardHandler.CreateDocument)
+		protected.PUT("/documents/:id", dashboardHandler.UpdateDocument)
+		protected.DELETE("/documents/:id", dashboardHandler.DeleteDocument)
 	}
 
 	auth := api.Group("/auth")

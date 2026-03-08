@@ -27,6 +27,18 @@ export interface CreateFolderResponseData {
   folder: FolderItem;
 }
 
+export interface UpdateFolderRequest {
+  name: string;
+}
+
+export interface UpdateFolderResponseData {
+  folder: FolderItem;
+}
+
+export interface DeleteFolderResponseData {
+  deleted_id: number;
+}
+
 export interface CreateDocumentRequest {
   folder_id?: number | null;
   title?: string;
@@ -34,4 +46,16 @@ export interface CreateDocumentRequest {
 
 export interface CreateDocumentResponseData {
   document: DocumentItem;
+}
+
+export interface UpdateDocumentRequest {
+  title: string;
+}
+
+export interface UpdateDocumentResponseData {
+  document: DocumentItem;
+}
+
+export interface DeleteDocumentResponseData {
+  deleted_id: number;
 }

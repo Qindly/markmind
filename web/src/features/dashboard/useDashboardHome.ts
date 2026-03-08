@@ -1,15 +1,58 @@
-// useDashboardHome.ts - 封装首页列表页的数据加载与交互状态
+// useDashboardHome.ts - 封装首页列表页的数据加载、删改与创建交互状态
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { logoutUser } from '../../api/auth';
-import { createDocument, createFolder, fetchDashboard } from '../../api/dashboard';
+import {
+  createDocument,
+  createFolder,
+  deleteDocument,
+  deleteFolder,
+  fetchDashboard,
+  updateDocument,
+  updateFolder,
+} from '../../api/dashboard';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import type { DocumentItem, FolderItem } from '../../types/dashboard';
 
-// useDashboardHome - 管理首页数据加载、创建与退出登录逻辑
-// 返回值：首页页面渲染所需的状态与事件回调
+type DashboardEntityType = 'folder' | 'document';
+
+interface DashboardMenuState {
+  type: DashboardEntityType;
+  id: number;
+}
+
+interface DashboardEditingState {
+  type: DashboardEntityType;
+  id: number;
+  value: string;
+}
+
+interface DashboardDeleteState {
+  type: DashboardEntityType;
+  id: number;
+  name: string;
+}
+
+interface DashboardToastState {
+  id: number;
+  message: string;
+}
+
+function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
+  return [...documents].sort((left, right) => {
+    const timeDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
+    if (timeDelta !== 0) {
+      return timeDelta;
+    }
+
+    return right.id - left.id;
+  });
+}
+
+// useDashboardHome - 管理首页数据加载、创建、删改与退出登录逻辑。
+// 返回值：首页页面渲染所需的状态与事件回调。
 export function useDashboardHome() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -23,6 +66,14 @@ export function useDashboardHome() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [menuState, setMenuState] = useState<DashboardMenuState | null>(null);
+  const [editingState, setEditingState] = useState<DashboardEditingState | null>(null);
+  const [deleteState, setDeleteState] = useState<DashboardDeleteState | null>(null);
+  const [toast, setToast] = useState<DashboardToastState | null>(null);
+  const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
+  const [isUpdatingDocument, setIsUpdatingDocument] = useState(false);
+  const [isDeletingFolder, setIsDeletingFolder] = useState(false);
+  const [isDeletingDocument, setIsDeletingDocument] = useState(false);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
@@ -48,7 +99,7 @@ export function useDashboardHome() {
         }
 
         setFolders(data.folders);
-        setDocuments(data.documents);
+        setDocuments(sortDocuments(data.documents));
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(getErrorMessage(error, '加载首页列表失败，请稍后重试'));
@@ -66,6 +117,18 @@ export function useDashboardHome() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setToast((currentToast) => (currentToast?.id === toast.id ? null : currentToast));
+    }, 3200);
+
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   async function handleLogout() {
     setErrorMessage('');
@@ -94,6 +157,8 @@ export function useDashboardHome() {
       setFolders((currentFolders) => [...currentFolders, response.folder]);
       setSelectedFolderId(response.folder.id);
       setSelectedDocumentId(null);
+      setMenuState(null);
+      setEditingState(null);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建文件夹失败，请稍后重试'));
       throw error;
@@ -108,12 +173,172 @@ export function useDashboardHome() {
 
     try {
       const response = await createDocument({ folder_id: selectedFolderId });
-      setDocuments((currentDocuments) => [response.document, ...currentDocuments]);
+      setDocuments((currentDocuments) => sortDocuments([response.document, ...currentDocuments]));
       setSelectedDocumentId(response.document.id);
+      setMenuState(null);
+      setEditingState(null);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建空文档失败，请稍后重试'));
     } finally {
       setIsCreatingDocument(false);
+    }
+  }
+
+  function handleSelectFolder(folderId: number | null) {
+    setSelectedFolderId(folderId);
+    setSelectedDocumentId(null);
+    setMenuState(null);
+    setEditingState(null);
+  }
+
+  function handleSelectDocument(documentId: number) {
+    setSelectedDocumentId(documentId);
+    setMenuState(null);
+  }
+
+  function handleOpenFolderMenu(folderId: number) {
+    setEditingState(null);
+    setMenuState((currentMenu) => {
+      if (currentMenu?.type === 'folder' && currentMenu.id === folderId) {
+        return null;
+      }
+
+      return { type: 'folder', id: folderId };
+    });
+  }
+
+  function handleOpenDocumentMenu(documentId: number) {
+    setEditingState(null);
+    setMenuState((currentMenu) => {
+      if (currentMenu?.type === 'document' && currentMenu.id === documentId) {
+        return null;
+      }
+
+      return { type: 'document', id: documentId };
+    });
+  }
+
+  function handleStartFolderEditing(folder: FolderItem) {
+    setMenuState(null);
+    setEditingState({ type: 'folder', id: folder.id, value: folder.name });
+  }
+
+  function handleStartDocumentEditing(document: DocumentItem) {
+    setMenuState(null);
+    setEditingState({ type: 'document', id: document.id, value: document.title });
+  }
+
+  function handleChangeEditingValue(value: string) {
+    setEditingState((currentEditing) => {
+      if (!currentEditing) {
+        return currentEditing;
+      }
+
+      return { ...currentEditing, value };
+    });
+  }
+
+  function handleCancelEditing() {
+    setEditingState(null);
+  }
+
+  async function handleSubmitEditing() {
+    if (!editingState) {
+      return;
+    }
+
+    setErrorMessage('');
+
+    if (editingState.type === 'folder') {
+      setIsUpdatingFolder(true);
+
+      try {
+        const response = await updateFolder(editingState.id, { name: editingState.value });
+        setFolders((currentFolders) =>
+          currentFolders.map((folder) => (folder.id === response.folder.id ? response.folder : folder)),
+        );
+        setEditingState(null);
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, '修改文件夹失败，请稍后重试'));
+      } finally {
+        setIsUpdatingFolder(false);
+      }
+
+      return;
+    }
+
+    setIsUpdatingDocument(true);
+
+    try {
+      const response = await updateDocument(editingState.id, { title: editingState.value });
+      setDocuments((currentDocuments) =>
+        sortDocuments(currentDocuments.map((document) => (document.id === response.document.id ? response.document : document))),
+      );
+      setEditingState(null);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '修改文档失败，请稍后重试'));
+    } finally {
+      setIsUpdatingDocument(false);
+    }
+  }
+
+  function handleRequestDeleteFolder(folder: FolderItem) {
+    setMenuState(null);
+    setDeleteState({ type: 'folder', id: folder.id, name: folder.name });
+  }
+
+  function handleRequestDeleteDocument(document: DocumentItem) {
+    setMenuState(null);
+    setDeleteState({ type: 'document', id: document.id, name: document.title });
+  }
+
+  function handleCancelDelete() {
+    setDeleteState(null);
+  }
+
+  async function handleConfirmDelete() {
+    const target = deleteState;
+    if (!target) {
+      return;
+    }
+
+    setErrorMessage('');
+
+    if (target.type === 'folder') {
+      setIsDeletingFolder(true);
+
+      try {
+        await deleteFolder(target.id);
+        setFolders((currentFolders) => currentFolders.filter((folder) => folder.id !== target.id));
+        if (selectedFolderId === target.id) {
+          setSelectedFolderId(null);
+          setSelectedDocumentId(null);
+        }
+        setDeleteState(null);
+        setToast({ id: Date.now(), message: `已删除文件夹「${target.name}」` });
+      } catch (error) {
+        setErrorMessage(getErrorMessage(error, '删除文件夹失败，请稍后重试'));
+      } finally {
+        setIsDeletingFolder(false);
+      }
+
+      return;
+    }
+
+    setIsDeletingDocument(true);
+
+    try {
+      await deleteDocument(target.id);
+      setDocuments((currentDocuments) => currentDocuments.filter((document) => document.id !== target.id));
+      if (selectedDocumentId === target.id) {
+        setSelectedDocumentId(null);
+      }
+      setDeleteState(null);
+      setToast({ id: Date.now(), message: `已删除文档「${target.name}」` });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '删除文档失败，请稍后重试'));
+    } finally {
+      setIsDeletingDocument(false);
     }
   }
 
@@ -129,13 +354,35 @@ export function useDashboardHome() {
     isCreatingFolder,
     isCreatingDocument,
     isLoggingOut,
+    isUpdatingFolder,
+    isUpdatingDocument,
+    isDeletingFolder,
+    isDeletingDocument,
+    folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
+    documentMenuId: menuState?.type === 'document' ? menuState.id : null,
+    editingFolderId: editingState?.type === 'folder' ? editingState.id : null,
+    editingDocumentId: editingState?.type === 'document' ? editingState.id : null,
+    editingValue: editingState?.value ?? '',
+    deleteTarget: deleteState,
+    toast,
     handleLogout,
     handleCreateFolder,
     handleCreateDocument,
-    handleSelectFolder: (folderId: number | null) => {
-      setSelectedFolderId(folderId);
-      setSelectedDocumentId(null);
-    },
-    handleSelectDocument: setSelectedDocumentId,
+    handleSelectFolder,
+    handleSelectDocument,
+    handleOpenFolderMenu,
+    handleOpenDocumentMenu,
+    handleCloseFolderMenu: () => setMenuState(null),
+    handleCloseDocumentMenu: () => setMenuState(null),
+    handleStartFolderEditing,
+    handleStartDocumentEditing,
+    handleChangeEditingValue,
+    handleSubmitEditing,
+    handleCancelEditing,
+    handleRequestDeleteFolder,
+    handleRequestDeleteDocument,
+    handleCancelDelete,
+    handleConfirmDelete,
+    dismissToast: () => setToast(null),
   };
 }
