@@ -1,4 +1,4 @@
-// main.go - MarkMind API 服务入口
+// main.go - MarkMind API ????
 package main
 
 import (
@@ -18,27 +18,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// main - 初始化依赖并启动 HTTP 服务
-// 返回值：无，服务异常退出时直接终止进程
+// main - ???????? HTTP ??
+// ???????????????????
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("????????: %v", err)
+	}
 
 	pool, err := repository.NewPostgresPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("初始化 PostgreSQL 失败: %v", err)
+		log.Fatalf("??? PostgreSQL ??: %v", err)
 	}
 	defer pool.Close()
 
 	if err := repository.RunMigrations(ctx, pool, "migrations"); err != nil {
-		log.Fatalf("执行数据库迁移失败: %v", err)
+		log.Fatalf("?????????: %v", err)
 	}
 
 	redisClient, err := repository.NewRedisClient(ctx, cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	if err != nil {
-		log.Fatalf("初始化 Redis 失败: %v", err)
+		log.Fatalf("??? Redis ??: %v", err)
 	}
 	defer redisClient.Close()
 
@@ -47,13 +50,14 @@ func main() {
 	sessionRepository := repository.NewSessionRepository(redisClient, cfg.RefreshTokenTTL)
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
+	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)
 	authHandler := handler.NewAuthHandler(authService, cfg)
 
 	if cfg.GinMode == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := handler.NewRouter(cfg, authHandler, authMiddleware)
+	router := handler.NewRouter(cfg, authHandler, authMiddleware, rateLimitMiddleware)
 	server := &http.Server{
 		Addr:              ":" + cfg.ServerPort,
 		Handler:           router,
@@ -66,12 +70,12 @@ func main() {
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			log.Printf("关闭 HTTP 服务失败: %v", err)
+			log.Printf("?? HTTP ????: %v", err)
 		}
 	}()
 
-	log.Printf("MarkMind API 正在监听 :%s", cfg.ServerPort)
+	log.Printf("MarkMind API ???? :%s", cfg.ServerPort)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("启动 HTTP 服务失败: %v", err)
+		log.Fatalf("?? HTTP ????: %v", err)
 	}
 }

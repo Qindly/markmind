@@ -1,11 +1,11 @@
-// useAuthBootstrap.ts - 在应用启动时尝试恢复登录会话
+// useAuthBootstrap.ts - ????????????????
 import { useEffect } from 'react';
 
 import { fetchCurrentUser, refreshSession } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
 
-// useAuthBootstrap - 尝试从现有 AT 或 RT 中恢复会话
-// 返回值：无
+// useAuthBootstrap - ? sessionStorage ? Refresh Token ?????
+// ?????
 export function useAuthBootstrap() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const isBootstrapping = useAuthStore((state) => state.isBootstrapping);
@@ -22,15 +22,28 @@ export function useAuthBootstrap() {
     let cancelled = false;
 
     async function bootstrapSession() {
-      try {
-        if (accessToken) {
+      let shouldRefresh = true;
+
+      if (accessToken) {
+        try {
           const user = await fetchCurrentUser();
           if (!cancelled) {
             setUser(user);
           }
-          return;
+          shouldRefresh = false;
+        } catch {
+          shouldRefresh = true;
         }
+      }
 
+      if (!shouldRefresh) {
+        if (!cancelled) {
+          finishBootstrap();
+        }
+        return;
+      }
+
+      try {
         const session = await refreshSession();
         if (!cancelled) {
           setSession(session.access_token, session.user);

@@ -1,4 +1,4 @@
-// response.go - 统一封装 API 成功与失败响应
+// response.go - ???? API ???????
 package handler
 
 import (
@@ -15,11 +15,11 @@ type apiResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-// WriteSuccess - 输出统一成功响应
-// 参数 ctx: Gin 请求上下文
-// 参数 status: HTTP 状态码
-// 参数 data: 返回数据体
-// 返回值：无
+// WriteSuccess - ????????
+// ?? ctx: Gin ?????
+// ?? status: HTTP ???
+// ?? data: ?????
+// ?????
 func WriteSuccess(ctx *gin.Context, status int, data any) {
 	ctx.JSON(status, apiResponse{
 		Code:    appconst.SuccessCode,
@@ -28,12 +28,12 @@ func WriteSuccess(ctx *gin.Context, status int, data any) {
 	})
 }
 
-// WriteError - 输出统一失败响应
-// 参数 ctx: Gin 请求上下文
-// 参数 status: HTTP 状态码
-// 参数 code: 业务错误码
-// 参数 message: 错误文案
-// 返回值：无
+// WriteError - ????????
+// ?? ctx: Gin ?????
+// ?? status: HTTP ???
+// ?? code: ?????
+// ?? message: ????
+// ?????
 func WriteError(ctx *gin.Context, status int, code int, message string) {
 	ctx.JSON(status, apiResponse{
 		Code:    code,
@@ -57,7 +57,9 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusUnauthorized, appconst.ErrCodeUnauthorized, err.Error()
 	case errors.Is(err, appconst.ErrInvalidRefreshToken):
 		return http.StatusUnauthorized, appconst.ErrCodeInvalidRefreshToken, err.Error()
+	case errors.Is(err, appconst.ErrRateLimitExceeded):
+		return http.StatusTooManyRequests, appconst.ErrCodeTooManyRequests, err.Error()
 	default:
-		return http.StatusInternalServerError, appconst.ErrCodeInternalServer, "服务器开小差了，请稍后再试"
+		return http.StatusInternalServerError, appconst.ErrCodeInternalServer, "?????????????"
 	}
 }
