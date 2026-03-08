@@ -57,7 +57,11 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := handler.NewRouter(cfg, authHandler, authMiddleware, rateLimitMiddleware)
+	router, err := handler.NewRouter(cfg, authHandler, authMiddleware, rateLimitMiddleware)
+	if err != nil {
+		log.Fatalf("???????????: %v", err)
+	}
+
 	server := &http.Server{
 		Addr:              ":" + cfg.ServerPort,
 		Handler:           router,

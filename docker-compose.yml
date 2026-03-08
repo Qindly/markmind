@@ -2,8 +2,10 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: markmind-postgres
-    env_file:
-      - ./.env.example
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "58002:5432"
     volumes:
@@ -26,10 +28,26 @@ services:
     build:
       context: ./server
     container_name: markmind-server
-    env_file:
-      - ./.env.example
     environment:
+      APP_ENV: ${APP_ENV}
+      GIN_MODE: ${GIN_MODE}
       SERVER_PORT: 8080
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_HTTP_ONLY: ${COOKIE_HTTP_ONLY}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
+      AUTH_RATE_LIMIT_WINDOW: ${AUTH_RATE_LIMIT_WINDOW}
+      AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS}
     depends_on:
       - postgres
       - redis

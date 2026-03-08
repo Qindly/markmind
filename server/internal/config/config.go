@@ -34,6 +34,7 @@ type Config struct {
 	RedisDB                 int
 	JWTSecret               string
 	FrontendOrigin          string
+	TrustedProxies          []string
 	AccessTokenTTL          time.Duration
 	RefreshTokenTTL         time.Duration
 	RefreshCookieName       string
@@ -61,6 +62,7 @@ func Load() (Config, error) {
 
 	jwtSecret, hasJWTSecret := getEnvWithFlag("JWT_SECRET", "")
 	frontendOrigin, hasFrontendOrigin := getEnvWithFlag("FRONTEND_ORIGIN", defaultFrontendOrigin)
+	trustedProxies := getEnvAsStringSlice("TRUSTED_PROXIES")
 	accessTokenTTL, err := getEnvAsDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
 	if err != nil {
 		return Config{}, err
@@ -111,6 +113,7 @@ func Load() (Config, error) {
 		RedisDB:                 redisDB,
 		JWTSecret:               jwtSecret,
 		FrontendOrigin:          frontendOrigin,
+		TrustedProxies:          trustedProxies,
 		AccessTokenTTL:          accessTokenTTL,
 		RefreshTokenTTL:         refreshTokenTTL,
 		RefreshCookieName:       refreshCookieName,
@@ -195,6 +198,30 @@ func getEnvWithFlag(key string, fallback string) (string, bool) {
 	}
 
 	return fallback, false
+}
+
+func getEnvAsStringSlice(key string) []string {
+	value, exists := os.LookupEnv(key)
+	if !exists || strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	items := strings.Split(value, ",")
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		trimmed := strings.TrimSpace(item)
+		if trimmed == "" {
+			continue
+		}
+
+		result = append(result, trimmed)
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+
+	return result
 }
 
 func getEnvAsInt(key string, fallback int) (int, error) {

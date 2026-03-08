@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Qindly/markmind/internal/config"
@@ -20,8 +21,12 @@ func NewRouter(
 	authHandler *AuthHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimitMiddleware *middleware.RateLimitMiddleware,
-) *gin.Engine {
+) (*gin.Engine, error) {
 	router := gin.New()
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		return nil, fmt.Errorf("配置 Gin 受信任代理失败: %w", err)
+	}
+
 	router.Use(gin.Logger(), gin.Recovery(), middleware.CORSMiddleware(cfg))
 
 	router.GET("/healthz", func(ctx *gin.Context) {
@@ -38,5 +43,5 @@ func NewRouter(
 		auth.GET("/me", authMiddleware.RequireAuth(), authHandler.Me)
 	}
 
-	return router
+	return router, nil
 }
