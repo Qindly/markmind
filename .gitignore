@@ -15,6 +15,8 @@ web/dist/
 web/.pnpm-store/
 web/.vite/
 web/.cache/
+web/vite.config.d.ts
+web/tailwind.config.d.ts
 *.tsbuildinfo
 
 server/.env
@@ -26,3 +28,5 @@ server/uploads/
 
 .DS_Store
 Thumbs.db
+
+tmp/

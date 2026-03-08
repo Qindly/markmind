@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: markmind-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "58002:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - markmind_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: markmind-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "58003:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - markmind_network
+
+  server:
+    build:
+      context: ./server
+    container_name: markmind-server
+    environment:
+      APP_ENV: ${APP_ENV}
+      GIN_MODE: ${GIN_MODE}
+      SERVER_PORT: 8080
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_HTTP_ONLY: ${COOKIE_HTTP_ONLY}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
+      AUTH_RATE_LIMIT_WINDOW: ${AUTH_RATE_LIMIT_WINDOW}
+      AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS}
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "58001:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - markmind_network
+
+  web:
+    build:
+      context: ./web
+    container_name: markmind-web
+    depends_on:
+      - server
+    ports:
+      - "58000:80"
+    networks:
+      - markmind_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  markmind_network:
+    driver: bridge
