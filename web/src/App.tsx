@@ -1,6 +1,7 @@
-// App.tsx - 应用根组件与路由配置
+// App.tsx - 配置应用根路由与全站顶部消息容器
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
+import { Toaster } from './components/ui/Toaster';
 import { GuestRoute } from './features/auth/components/GuestRoute';
 import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
@@ -9,8 +10,8 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 
 /**
- * App - 根组件
- * 返回值：应用路由 JSX 结构
+ * App - 根组件。
+ * 返回值：应用路由与全站消息容器 JSX 结构。
  */
 export function App() {
   useAuthBootstrap();
@@ -19,31 +20,32 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route
-          path="/login"
           element={
             <GuestRoute>
               <LoginPage />
             </GuestRoute>
           }
+          path="/login"
         />
         <Route
-          path="/register"
           element={
             <GuestRoute>
               <RegisterPage />
             </GuestRoute>
           }
+          path="/register"
         />
         <Route
-          path="/"
           element={
             <ProtectedRoute>
               <DashboardPage />
             </ProtectedRoute>
           }
+          path="/"
         />
-        <Route path="*" element={<Navigate replace to="/" />} />
+        <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

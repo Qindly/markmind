@@ -8,21 +8,16 @@ import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../lib/getErrorMessage';
 import { useAuthStore } from '../../../stores/authStore';
 
-export interface LoginFormProps {
-  notice?: string;
-}
-
 interface LoginFormState {
   identifier: string;
   password: string;
 }
 
 /**
- * LoginForm - 登录表单组件
- * 参数 props: 页面提示文案
- * 返回值：登录表单 JSX 结构
+ * LoginForm - 登录表单组件。
+ * 返回值：登录表单 JSX 结构。
  */
-export function LoginForm({ notice }: LoginFormProps) {
+export function LoginForm() {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
   const [formState, setFormState] = useState<LoginFormState>({
@@ -63,11 +58,6 @@ export function LoginForm({ notice }: LoginFormProps) {
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
-      {notice ? (
-        <div className="rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-          {notice}
-        </div>
-      ) : null}
       {errorMessage ? (
         <div className="rounded-2xl border border-[var(--color-danger-border)] bg-[var(--color-page-bg)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
           {errorMessage}
@@ -78,9 +68,9 @@ export function LoginForm({ notice }: LoginFormProps) {
         <span>账号（邮箱 / 用户名）</span>
         <Input
           autoComplete="username"
+          onChange={(event) => updateField('identifier', event.target.value)}
           placeholder="请输入邮箱或用户名"
           value={formState.identifier}
-          onChange={(event) => updateField('identifier', event.target.value)}
         />
       </label>
 
@@ -88,10 +78,10 @@ export function LoginForm({ notice }: LoginFormProps) {
         <span>密码</span>
         <Input
           autoComplete="current-password"
+          onChange={(event) => updateField('password', event.target.value)}
           placeholder="请输入密码"
           type="password"
           value={formState.password}
-          onChange={(event) => updateField('password', event.target.value)}
         />
       </label>
 

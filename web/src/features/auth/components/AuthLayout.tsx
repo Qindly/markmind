@@ -1,4 +1,4 @@
-// AuthLayout.tsx - 提供登录注册页共用的布局骨架
+// AuthLayout.tsx - 提供登录注册页面共用的布局骨架
 import type { PropsWithChildren, ReactNode } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardSection, CardTitle } from '../../../components/ui/Card';
@@ -10,9 +10,9 @@ export interface AuthLayoutProps extends PropsWithChildren {
 }
 
 /**
- * AuthLayout - 鉴权页面布局组件
- * 参数 props: 标题、描述、底部文案与正文内容
- * 返回值：登录注册页布局 JSX 结构
+ * AuthLayout - 鉴权页面布局组件。
+ * 参数 props: 标题、描述、底部文案与正文内容。
+ * 返回值：登录注册页面布局 JSX 结构。
  */
 export function AuthLayout({ title, description, footer, children }: AuthLayoutProps) {
   return (
@@ -24,7 +24,9 @@ export function AuthLayout({ title, description, footer, children }: AuthLayoutP
               MARKMIND
             </span>
             <div className="space-y-4">
-              <h2 className="text-4xl font-semibold leading-tight text-[var(--color-text-primary)]">把知识沉淀成真正可回看的第二大脑。</h2>
+              <h2 className="text-4xl font-semibold leading-tight text-[var(--color-text-primary)]">
+                把知识沉淀成真正可回看的第二大脑。
+              </h2>
               <p className="max-w-md text-sm leading-7 text-[var(--color-text-secondary)]">
                 登录后即可进入你的云端知识库。先从鉴权模块开始，把整个工程骨架稳稳搭起来。
               </p>

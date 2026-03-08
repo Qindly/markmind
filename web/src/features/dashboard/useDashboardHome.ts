@@ -12,6 +12,7 @@ import {
   updateDocument,
   updateFolder,
 } from '../../api/dashboard';
+import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import type { DocumentItem, FolderItem } from '../../types/dashboard';
@@ -35,11 +36,6 @@ interface DashboardDeleteState {
   name: string;
 }
 
-interface DashboardToastState {
-  id: number;
-  message: string;
-}
-
 function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
   return [...documents].sort((left, right) => {
     const timeDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
@@ -51,8 +47,10 @@ function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
   });
 }
 
-// useDashboardHome - 管理首页数据加载、创建、删改与退出登录逻辑。
-// 返回值：首页页面渲染所需的状态与事件回调。
+/**
+ * useDashboardHome - 管理首页数据加载、创建、删改与退出登录逻辑。
+ * 返回值：首页页面渲染所需的状态与事件回调。
+ */
 export function useDashboardHome() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -69,7 +67,6 @@ export function useDashboardHome() {
   const [menuState, setMenuState] = useState<DashboardMenuState | null>(null);
   const [editingState, setEditingState] = useState<DashboardEditingState | null>(null);
   const [deleteState, setDeleteState] = useState<DashboardDeleteState | null>(null);
-  const [toast, setToast] = useState<DashboardToastState | null>(null);
   const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
   const [isUpdatingDocument, setIsUpdatingDocument] = useState(false);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
@@ -117,18 +114,6 @@ export function useDashboardHome() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setToast((currentToast) => (currentToast?.id === toast.id ? null : currentToast));
-    }, 3200);
-
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   async function handleLogout() {
     setErrorMessage('');
@@ -315,7 +300,7 @@ export function useDashboardHome() {
           setSelectedDocumentId(null);
         }
         setDeleteState(null);
-        setToast({ id: Date.now(), message: `已删除文件夹「${target.name}」` });
+        toast({ description: `已删除文件夹「${target.name}」`, variant: 'destructive' });
       } catch (error) {
         setErrorMessage(getErrorMessage(error, '删除文件夹失败，请稍后重试'));
       } finally {
@@ -334,7 +319,7 @@ export function useDashboardHome() {
         setSelectedDocumentId(null);
       }
       setDeleteState(null);
-      setToast({ id: Date.now(), message: `已删除文档「${target.name}」` });
+      toast({ description: `已删除文档「${target.name}」`, variant: 'destructive' });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '删除文档失败，请稍后重试'));
     } finally {
@@ -364,7 +349,6 @@ export function useDashboardHome() {
     editingDocumentId: editingState?.type === 'document' ? editingState.id : null,
     editingValue: editingState?.value ?? '',
     deleteTarget: deleteState,
-    toast,
     handleLogout,
     handleCreateFolder,
     handleCreateDocument,
@@ -383,6 +367,5 @@ export function useDashboardHome() {
     handleRequestDeleteDocument,
     handleCancelDelete,
     handleConfirmDelete,
-    dismissToast: () => setToast(null),
   };
 }

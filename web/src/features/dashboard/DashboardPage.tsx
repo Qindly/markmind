@@ -1,6 +1,5 @@
 // DashboardPage.tsx - 渲染登录后的首页文档列表与目录管理入口
 import { DashboardDeleteDialog } from './components/DashboardDeleteDialog';
-import { DashboardToast } from './components/DashboardToast';
 import { DocumentListPanel } from './components/DocumentListPanel';
 import { FolderSidebar } from './components/FolderSidebar';
 import { useDashboardHome } from './useDashboardHome';
@@ -77,8 +76,6 @@ export function DashboardPage() {
         onConfirm={dashboard.handleConfirmDelete}
         target={dashboard.deleteTarget}
       />
-
-      {dashboard.toast ? <DashboardToast message={dashboard.toast.message} onClose={dashboard.dismissToast} /> : null}
     </>
   );
 }

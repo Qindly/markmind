@@ -15,8 +15,8 @@ interface RegisterFormState {
 }
 
 /**
- * RegisterForm - 注册表单组件
- * 返回值：注册表单 JSX 结构
+ * RegisterForm - 注册表单组件。
+ * 返回值：注册表单 JSX 结构。
  */
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -39,11 +39,6 @@ export function RegisterForm() {
 
     if (!formState.username.trim() || !formState.email.trim() || !formState.password || !formState.confirmPassword) {
       setErrorMessage('请完整填写注册信息');
-      return;
-    }
-
-    if (formState.password.length < 8) {
-      setErrorMessage('密码长度至少为 8 位');
       return;
     }
 
@@ -82,22 +77,27 @@ export function RegisterForm() {
 
       <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>用户名</span>
-        <Input placeholder="例如 ice" value={formState.username} onChange={(event) => updateField('username', event.target.value)} />
+        <Input onChange={(event) => updateField('username', event.target.value)} placeholder="例如 ice" value={formState.username} />
       </label>
 
       <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>邮箱</span>
-        <Input placeholder="name@example.com" type="email" value={formState.email} onChange={(event) => updateField('email', event.target.value)} />
+        <Input
+          onChange={(event) => updateField('email', event.target.value)}
+          placeholder="name@example.com"
+          type="email"
+          value={formState.email}
+        />
       </label>
 
       <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>密码</span>
-        <Input type="password" value={formState.password} onChange={(event) => updateField('password', event.target.value)} />
+        <Input onChange={(event) => updateField('password', event.target.value)} type="password" value={formState.password} />
       </label>
 
       <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>确认密码</span>
-        <Input type="password" value={formState.confirmPassword} onChange={(event) => updateField('confirmPassword', event.target.value)} />
+        <Input onChange={(event) => updateField('confirmPassword', event.target.value)} type="password" value={formState.confirmPassword} />
       </label>
 
       <Button isLoading={isSubmitting} type="submit">
