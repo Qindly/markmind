@@ -222,3 +222,141 @@
   "message": "未授权或身份无效"
 }
 ```
+
+## 首页与知识库入口接口
+
+### 获取首页数据
+
+- **请求方式**：GET
+- **路由**：`/api/v1/dashboard`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "folders": [
+      {
+        "id": 1,
+        "name": "前端实习",
+        "created_at": "2026-03-08T12:00:00Z",
+        "updated_at": "2026-03-08T12:00:00Z"
+      }
+    ],
+    "documents": [
+      {
+        "id": 11,
+        "folder_id": null,
+        "title": "未命名文档",
+        "created_at": "2026-03-08T12:10:00Z",
+        "updated_at": "2026-03-08T12:10:00Z"
+      },
+      {
+        "id": 12,
+        "folder_id": 1,
+        "title": "React Router 学习笔记",
+        "created_at": "2026-03-08T12:15:00Z",
+        "updated_at": "2026-03-08T12:15:00Z"
+      }
+    ]
+  }
+}
+```
+
+**失败（401）**：
+```json
+{
+  "code": 40101,
+  "message": "未授权或身份无效"
+}
+```
+
+### 新建文件夹
+
+- **请求方式**：POST
+- **路由**：`/api/v1/folders`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| name | body(json) | string | 是 | 文件夹名称，长度 1~64 |
+
+#### 返回样例
+
+**成功（201）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "folder": {
+      "id": 1,
+      "name": "前端实习",
+      "created_at": "2026-03-08T12:00:00Z",
+      "updated_at": "2026-03-08T12:00:00Z"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40005,
+  "message": "文件夹名称不能为空"
+}
+```
+
+### 新建空文档
+
+- **请求方式**：POST
+- **路由**：`/api/v1/documents`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| folder_id | body(json) | number \| null | 否 | 所属文件夹 ID，不传或为 `null` 表示根目录 |
+| title | body(json) | string | 否 | 文档标题；为空时由服务端自动生成默认标题 |
+
+#### 返回样例
+
+**成功（201）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": null,
+      "title": "未命名文档",
+      "created_at": "2026-03-08T12:10:00Z",
+      "updated_at": "2026-03-08T12:10:00Z"
+    }
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40006,
+  "message": "文件夹不存在"
+}
+```

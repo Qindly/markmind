@@ -74,24 +74,28 @@ export function RegisterForm() {
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
-      {errorMessage ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">{errorMessage}</div> : null}
+      {errorMessage ? (
+        <div className="rounded-2xl border border-[var(--color-danger-border)] bg-[var(--color-page-bg)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
+          {errorMessage}
+        </div>
+      ) : null}
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
+      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>用户名</span>
         <Input placeholder="例如 ice" value={formState.username} onChange={(event) => updateField('username', event.target.value)} />
       </label>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
+      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>邮箱</span>
         <Input placeholder="name@example.com" type="email" value={formState.email} onChange={(event) => updateField('email', event.target.value)} />
       </label>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
+      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>密码</span>
         <Input type="password" value={formState.password} onChange={(event) => updateField('password', event.target.value)} />
       </label>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
+      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
         <span>确认密码</span>
         <Input type="password" value={formState.confirmPassword} onChange={(event) => updateField('confirmPassword', event.target.value)} />
       </label>
@@ -100,9 +104,9 @@ export function RegisterForm() {
         注册
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-[var(--color-text-secondary)]">
         已有账号？
-        <Link className="ml-1 font-medium text-slate-950 underline-offset-4 hover:underline" to="/login">
+        <Link className="ml-1 font-medium text-[var(--color-text-primary)] underline-offset-4 hover:underline" to="/login">
           去登录
         </Link>
       </p>

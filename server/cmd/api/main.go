@@ -47,17 +47,21 @@ func main() {
 
 	jwtManager := util.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	userRepository := repository.NewUserRepository(pool)
+	folderRepository := repository.NewFolderRepository(pool)
+	documentRepository := repository.NewDocumentRepository(pool)
 	sessionRepository := repository.NewSessionRepository(redisClient, cfg.RefreshTokenTTL)
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
+	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)
 	authHandler := handler.NewAuthHandler(authService, cfg)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 
 	if cfg.GinMode == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router, err := handler.NewRouter(cfg, authHandler, authMiddleware, rateLimitMiddleware)
+	router, err := handler.NewRouter(cfg, authHandler, dashboardHandler, authMiddleware, rateLimitMiddleware)
 	if err != nil {
 		log.Fatalf("初始化路由失败: %v", err)
 	}

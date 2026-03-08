@@ -15,6 +15,10 @@ const (
 	ErrCodeEmailExists = 40003
 	// ErrCodePasswordMismatch - 两次输入的密码不一致。
 	ErrCodePasswordMismatch = 40004
+	// ErrCodeFolderNameRequired - 文件夹名称不能为空。
+	ErrCodeFolderNameRequired = 40005
+	// ErrCodeFolderNotFound - 文件夹不存在。
+	ErrCodeFolderNotFound = 40006
 
 	// ErrCodeUnauthorized - 未登录或身份无效。
 	ErrCodeUnauthorized = 40101
@@ -38,6 +42,10 @@ var (
 	ErrEmailExists = errors.New("邮箱已存在")
 	// ErrPasswordMismatch - 两次输入的密码不一致。
 	ErrPasswordMismatch = errors.New("两次输入的密码不一致")
+	// ErrFolderNameRequired - 文件夹名称不能为空。
+	ErrFolderNameRequired = errors.New("文件夹名称不能为空")
+	// ErrFolderNotFound - 文件夹不存在或不可访问。
+	ErrFolderNotFound = errors.New("文件夹不存在")
 	// ErrInvalidCredentials - 登录凭证无效。
 	ErrInvalidCredentials = errors.New("账号或密码错误")
 	// ErrUnauthorized - 当前请求未通过身份校验。

@@ -14,7 +14,7 @@ export function GuestRoute({ children }: PropsWithChildren) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (isBootstrapping) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">正在准备页面...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-[var(--color-page-bg)] text-sm text-[var(--color-text-secondary)]">正在准备页面...</div>;
   }
 
   if (isAuthenticated) {

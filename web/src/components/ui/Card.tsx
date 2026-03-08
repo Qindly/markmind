@@ -34,7 +34,7 @@ export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {
  * 返回值：卡片 JSX 结构
  */
 export function Card({ className, ...props }: CardProps) {
-  return <div className={cn('rounded-3xl border border-slate-200 bg-white p-8 shadow-soft', className)} {...props} />;
+  return <div className={cn('rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-surface-level-1)] p-8 shadow-soft', className)} {...props} />;
 }
 
 /**
@@ -52,7 +52,7 @@ export function CardHeader({ className, ...props }: CardHeaderProps) {
  * 返回值：标题 JSX 结构
  */
 export function CardTitle({ className, ...props }: CardTitleProps) {
-  return <h1 className={cn('text-3xl font-semibold tracking-tight text-slate-950', className)} {...props} />;
+  return <h1 className={cn('text-3xl font-semibold tracking-tight text-[var(--color-text-primary)]', className)} {...props} />;
 }
 
 /**
@@ -61,7 +61,7 @@ export function CardTitle({ className, ...props }: CardTitleProps) {
  * 返回值：描述 JSX 结构
  */
 export function CardDescription({ className, ...props }: CardDescriptionProps) {
-  return <p className={cn('text-sm leading-6 text-slate-500', className)} {...props} />;
+  return <p className={cn('text-sm leading-6 text-[var(--color-text-secondary)]', className)} {...props} />;
 }
 
 /**

@@ -16,7 +16,7 @@ export function Input({ className, ...props }: InputProps) {
   return (
     <input
       className={cn(
-        'h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200',
+        'h-11 w-full rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-4 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-secondary)] focus:border-[var(--color-border-strong)] focus:ring-2 focus:ring-[rgba(20,20,19,0.05)]',
         className,
       )}
       {...props}
