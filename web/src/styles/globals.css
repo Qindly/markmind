@@ -137,6 +137,15 @@ textarea {
   color: var(--color-text-primary);
 }
 
+.markdown-preview h1[id],
+.markdown-preview h2[id],
+.markdown-preview h3[id],
+.markdown-preview h4[id],
+.markdown-preview h5[id],
+.markdown-preview h6[id] {
+  scroll-margin-top: 1rem;
+}
+
 .markdown-preview h1 {
   font-size: 1.875rem;
 }

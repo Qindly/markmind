@@ -1,12 +1,14 @@
-﻿// EditorWorkspace.tsx - 渲染编辑页的双栏编辑器、预览区与保存操作区
+// EditorWorkspace.tsx - 渲染编辑页的双栏编辑器、预览区与保存操作区
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentDetail, DocumentSavePhase } from '../../../types/document';
 import { formatEditorDateTime } from '../formatEditorDateTime';
+import { useEditorToc } from '../useEditorToc';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EditorInfoPanel } from './EditorInfoPanel';
+import { EditorTocPanel } from './EditorTocPanel';
 import { MarkdownPreview } from './MarkdownPreview';
 
 export interface EditorWorkspaceProps {
@@ -39,6 +41,8 @@ export function EditorWorkspace({
   onContentChange,
   onSave,
 }: EditorWorkspaceProps) {
+  const editorToc = useEditorToc(content);
+
   return (
     <main className="min-h-screen px-3 py-4 text-[var(--color-text-primary)] sm:px-4 sm:py-5">
       <div className="flex w-full flex-col gap-4">
@@ -50,7 +54,14 @@ export function EditorWorkspace({
                   <Button className="w-auto" onClick={onBack} size="sm" type="button" variant="secondary">
                     返回首页
                   </Button>
-                  <Button className="w-auto" disabled={!isDirty} isLoading={isSaving} onClick={() => void onSave()} size="sm" type="button">
+                  <Button
+                    className="w-auto"
+                    disabled={!isDirty}
+                    isLoading={isSaving}
+                    onClick={() => void onSave()}
+                    size="sm"
+                    type="button"
+                  >
                     保存内容
                   </Button>
                 </div>
@@ -69,7 +80,20 @@ export function EditorWorkspace({
             ) : null}
 
             <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-              <EditorInfoPanel document={document} savePhase={savePhase} statusMessage={statusMessage} />
+              <div className="space-y-5">
+                <EditorInfoPanel
+                  document={document}
+                  savePhase={savePhase}
+                  statusMessage={statusMessage}
+                />
+                <EditorTocPanel
+                  activeHeadingId={editorToc.activeHeadingId}
+                  expandedState={editorToc.expandedState}
+                  onSelect={editorToc.handleSelectHeading}
+                  onToggle={editorToc.handleToggleHeading}
+                  tocTree={editorToc.tocTree}
+                />
+              </div>
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
@@ -90,10 +114,14 @@ export function EditorWorkspace({
                   <div className="space-y-1">
                     <h2 className="text-sm font-medium text-[var(--color-text-primary)]">实时预览</h2>
                     <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-                      基于 unified 管线实时渲染标题、列表、代码块、表格与任务列表等 GFM 内容。
+                      基于 unified 管线实时渲染标题、列表、代码块、公式与可折叠目录导航。
                     </p>
                   </div>
-                  <MarkdownPreview content={content} />
+                  <MarkdownPreview
+                    hasContent={editorToc.hasPreviewContent}
+                    html={editorToc.previewHtml}
+                    previewContainerRef={editorToc.previewContainerRef}
+                  />
                 </section>
               </div>
             </div>
