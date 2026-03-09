@@ -1,4 +1,4 @@
-// auth.go - 鉴权模块的业务错误码与错误定义
+// auth.go - 定义鉴权与首页模块共用的业务错误码和错误变量
 package appconst
 
 import "errors"
@@ -15,6 +15,16 @@ const (
 	ErrCodeEmailExists = 40003
 	// ErrCodePasswordMismatch - 两次输入的密码不一致。
 	ErrCodePasswordMismatch = 40004
+	// ErrCodeFolderNameRequired - 文件夹名称不能为空。
+	ErrCodeFolderNameRequired = 40005
+	// ErrCodeFolderNotFound - 文件夹不存在。
+	ErrCodeFolderNotFound = 40006
+	// ErrCodeDocumentTitleRequired - 文档标题不能为空。
+	ErrCodeDocumentTitleRequired = 40007
+	// ErrCodeDocumentNotFound - 文档不存在。
+	ErrCodeDocumentNotFound = 40008
+	// ErrCodeFolderNotEmpty - 文件夹下仍有文档，无法删除。
+	ErrCodeFolderNotEmpty = 40009
 
 	// ErrCodeUnauthorized - 未登录或身份无效。
 	ErrCodeUnauthorized = 40101
@@ -38,6 +48,16 @@ var (
 	ErrEmailExists = errors.New("邮箱已存在")
 	// ErrPasswordMismatch - 两次输入的密码不一致。
 	ErrPasswordMismatch = errors.New("两次输入的密码不一致")
+	// ErrFolderNameRequired - 文件夹名称不能为空。
+	ErrFolderNameRequired = errors.New("文件夹名称不能为空")
+	// ErrFolderNotFound - 文件夹不存在或不可访问。
+	ErrFolderNotFound = errors.New("文件夹不存在")
+	// ErrDocumentTitleRequired - 文档标题不能为空。
+	ErrDocumentTitleRequired = errors.New("文档标题不能为空")
+	// ErrDocumentNotFound - 文档不存在或不可访问。
+	ErrDocumentNotFound = errors.New("文档不存在")
+	// ErrFolderNotEmpty - 文件夹下仍有文档，无法删除。
+	ErrFolderNotEmpty = errors.New("文件夹下仍有文档，无法删除")
 	// ErrInvalidCredentials - 登录凭证无效。
 	ErrInvalidCredentials = errors.New("账号或密码错误")
 	// ErrUnauthorized - 当前请求未通过身份校验。

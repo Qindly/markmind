@@ -3,7 +3,7 @@ export default {
     theme: {
         extend: {
             boxShadow: {
-                soft: '0 18px 60px rgba(15, 23, 42, 0.12)',
+                soft: '0 12px 28px rgba(20, 20, 19, 0.05)',
             },
         },
     },

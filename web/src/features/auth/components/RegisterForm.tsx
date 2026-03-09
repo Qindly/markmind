@@ -1,9 +1,11 @@
 // RegisterForm.tsx - 处理注册表单的交互与提交
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { registerUser } from '../../../api/auth';
+import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
+import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../lib/getErrorMessage';
 
@@ -15,11 +17,15 @@ interface RegisterFormState {
 }
 
 /**
- * RegisterForm - 注册表单组件
- * 返回值：注册表单 JSX 结构
+ * RegisterForm - 注册表单组件。
+ * 返回值：注册表单 JSX 结构。
  */
 export function RegisterForm() {
   const navigate = useNavigate();
+  const usernameId = useId();
+  const emailId = useId();
+  const passwordId = useId();
+  const confirmPasswordId = useId();
   const [formState, setFormState] = useState<RegisterFormState>({
     username: '',
     email: '',
@@ -39,11 +45,6 @@ export function RegisterForm() {
 
     if (!formState.username.trim() || !formState.email.trim() || !formState.password || !formState.confirmPassword) {
       setErrorMessage('请完整填写注册信息');
-      return;
-    }
-
-    if (formState.password.length < 8) {
-      setErrorMessage('密码长度至少为 8 位');
       return;
     }
 
@@ -74,35 +75,49 @@ export function RegisterForm() {
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
-      {errorMessage ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">{errorMessage}</div> : null}
+      {errorMessage ? (
+        <Alert className="shadow-none" variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
-        <span>用户名</span>
-        <Input placeholder="例如 ice" value={formState.username} onChange={(event) => updateField('username', event.target.value)} />
-      </label>
+      <FormField htmlFor={usernameId} label="用户名">
+        <Input autoComplete="username" id={usernameId} onChange={(event) => updateField('username', event.target.value)} placeholder="例如 ice" value={formState.username} />
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
-        <span>邮箱</span>
-        <Input placeholder="name@example.com" type="email" value={formState.email} onChange={(event) => updateField('email', event.target.value)} />
-      </label>
+      <FormField htmlFor={emailId} label="邮箱">
+        <Input
+          autoComplete="email"
+          id={emailId}
+          onChange={(event) => updateField('email', event.target.value)}
+          placeholder="name@example.com"
+          type="email"
+          value={formState.email}
+        />
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
-        <span>密码</span>
-        <Input type="password" value={formState.password} onChange={(event) => updateField('password', event.target.value)} />
-      </label>
+      <FormField htmlFor={passwordId} label="密码">
+        <Input autoComplete="new-password" id={passwordId} onChange={(event) => updateField('password', event.target.value)} placeholder="请输入密码" type="password" value={formState.password} />
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-slate-700">
-        <span>确认密码</span>
-        <Input type="password" value={formState.confirmPassword} onChange={(event) => updateField('confirmPassword', event.target.value)} />
-      </label>
+      <FormField htmlFor={confirmPasswordId} label="确认密码">
+        <Input
+          autoComplete="new-password"
+          id={confirmPasswordId}
+          onChange={(event) => updateField('confirmPassword', event.target.value)}
+          placeholder="请再次输入密码"
+          type="password"
+          value={formState.confirmPassword}
+        />
+      </FormField>
 
       <Button isLoading={isSubmitting} type="submit">
         注册
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-[var(--color-text-secondary)]">
         已有账号？
-        <Link className="ml-1 font-medium text-slate-950 underline-offset-4 hover:underline" to="/login">
+        <Link className="ml-1 font-medium text-[var(--color-text-primary)] underline-offset-4 hover:underline" to="/login">
           去登录
         </Link>
       </p>

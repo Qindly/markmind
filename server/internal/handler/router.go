@@ -13,12 +13,14 @@ import (
 // NewRouter - 创建并配置 Gin 路由实例。
 // 参数 cfg: 服务端运行配置。
 // 参数 authHandler: 鉴权处理器。
+// 参数 dashboardHandler: 首页业务处理器。
 // 参数 authMiddleware: 鉴权中间件。
 // 参数 rateLimitMiddleware: 限流中间件。
 // 返回值为配置完成的 Gin 引擎与可能出现的错误。
 func NewRouter(
 	cfg config.Config,
 	authHandler *AuthHandler,
+	dashboardHandler *DashboardHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimitMiddleware *middleware.RateLimitMiddleware,
 ) (*gin.Engine, error) {
@@ -34,6 +36,18 @@ func NewRouter(
 	})
 
 	api := router.Group("/api/v1")
+	protected := api.Group("")
+	protected.Use(authMiddleware.RequireAuth())
+	{
+		protected.GET("/dashboard", dashboardHandler.GetDashboard)
+		protected.POST("/folders", dashboardHandler.CreateFolder)
+		protected.PUT("/folders/:id", dashboardHandler.UpdateFolder)
+		protected.DELETE("/folders/:id", dashboardHandler.DeleteFolder)
+		protected.POST("/documents", dashboardHandler.CreateDocument)
+		protected.PUT("/documents/:id", dashboardHandler.UpdateDocument)
+		protected.DELETE("/documents/:id", dashboardHandler.DeleteDocument)
+	}
+
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", rateLimitMiddleware.Limit("register"), authHandler.Register)

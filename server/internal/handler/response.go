@@ -52,6 +52,16 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusBadRequest, appconst.ErrCodeEmailExists, err.Error()
 	case errors.Is(err, appconst.ErrPasswordMismatch):
 		return http.StatusBadRequest, appconst.ErrCodePasswordMismatch, err.Error()
+	case errors.Is(err, appconst.ErrFolderNameRequired):
+		return http.StatusBadRequest, appconst.ErrCodeFolderNameRequired, err.Error()
+	case errors.Is(err, appconst.ErrFolderNotFound):
+		return http.StatusNotFound, appconst.ErrCodeFolderNotFound, err.Error()
+	case errors.Is(err, appconst.ErrDocumentTitleRequired):
+		return http.StatusBadRequest, appconst.ErrCodeDocumentTitleRequired, err.Error()
+	case errors.Is(err, appconst.ErrDocumentNotFound):
+		return http.StatusNotFound, appconst.ErrCodeDocumentNotFound, err.Error()
+	case errors.Is(err, appconst.ErrFolderNotEmpty):
+		return http.StatusBadRequest, appconst.ErrCodeFolderNotEmpty, err.Error()
 	case errors.Is(err, appconst.ErrInvalidCredentials):
 		return http.StatusUnauthorized, appconst.ErrCodeInvalidCredentials, err.Error()
 	case errors.Is(err, appconst.ErrUnauthorized):

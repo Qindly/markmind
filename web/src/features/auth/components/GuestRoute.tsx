@@ -2,6 +2,7 @@
 import type { PropsWithChildren } from 'react';
 import { Navigate } from 'react-router-dom';
 
+import { PageState } from '../../../components/ui/PageState';
 import { useAuthStore } from '../../../stores/authStore';
 
 /**
@@ -14,7 +15,7 @@ export function GuestRoute({ children }: PropsWithChildren) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (isBootstrapping) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">正在准备页面...</div>;
+    return <PageState message="正在准备页面..." />;
   }
 
   if (isAuthenticated) {
