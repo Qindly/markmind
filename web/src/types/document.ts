@@ -8,6 +8,8 @@ export interface DocumentDetail {
   updated_at: string;
 }
 
+export type DocumentSavePhase = 'dirty' | 'autosaving' | 'manual-saving' | 'saved' | 'save-error';
+
 export interface GetDocumentDetailResponseData {
   document: DocumentDetail;
 }

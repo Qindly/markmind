@@ -1,19 +1,20 @@
-﻿// EditorWorkspace.tsx - 渲染编辑页的正文编辑骨架与保存操作区
+﻿// EditorWorkspace.tsx - 渲染编辑页的双栏编辑器、预览区与保存操作区
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
-import { FormField } from '../../../components/ui/FormField';
-import { Input } from '../../../components/ui/Input';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
-import { Textarea } from '../../../components/ui/Textarea';
-import { cn } from '../../../lib/cn';
-import type { DocumentDetail } from '../../../types/document';
+import type { DocumentDetail, DocumentSavePhase } from '../../../types/document';
+import { formatEditorDateTime } from '../formatEditorDateTime';
+import { CodeMirrorEditor } from './CodeMirrorEditor';
+import { EditorInfoPanel } from './EditorInfoPanel';
+import { MarkdownPreview } from './MarkdownPreview';
 
 export interface EditorWorkspaceProps {
   document: DocumentDetail;
   content: string;
   errorMessage: string;
   statusMessage: string;
+  savePhase: DocumentSavePhase;
   isDirty: boolean;
   isSaving: boolean;
   onBack: () => void;
@@ -21,24 +22,9 @@ export interface EditorWorkspaceProps {
   onSave: () => Promise<void>;
 }
 
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '时间未知';
-  }
-
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
 /**
- * EditorWorkspace - 展示编辑页标题、只读信息区与正文编辑区域。
- * 参数 props: 文档数据、保存状态与交互回调。
+ * EditorWorkspace - 展示编辑页标题、信息栏、CodeMirror 编辑器与实时预览。
+ * 参数 props: 文档详情、保存状态与交互回调。
  * 返回值：编辑页主体 JSX 结构。
  */
 export function EditorWorkspace({
@@ -46,6 +32,7 @@ export function EditorWorkspace({
   content,
   errorMessage,
   statusMessage,
+  savePhase,
   isDirty,
   isSaving,
   onBack,
@@ -68,7 +55,7 @@ export function EditorWorkspace({
                   </Button>
                 </div>
               }
-              description={`文档 #${document.id} · 最近更新于 ${formatDateTime(document.updated_at)}`}
+              description={`文档 #${document.id} · 最近更新于 ${formatEditorDateTime(document.updated_at)}`}
               eyebrow="Editor"
               title={document.title}
             />
@@ -81,38 +68,34 @@ export function EditorWorkspace({
               </Alert>
             ) : null}
 
-            <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-              <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
-                <FormField label="文档标题" message="本次 P0 阶段先只展示标题，重命名仍在首页列表完成。">
-                  <Input readOnly value={document.title} />
-                </FormField>
-                <FormField label="保存状态" message="下一步会继续接入自动保存、CodeMirror 和实时预览。">
-                  <Input
-                    className={cn(
-                      isDirty ? 'border-[var(--color-border-strong)] text-[var(--color-text-primary)]' : undefined,
-                    )}
-                    readOnly
-                    value={statusMessage}
-                  />
-                </FormField>
-                <FormField label="创建时间">
-                  <Input readOnly value={formatDateTime(document.created_at)} />
-                </FormField>
-              </section>
+            <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+              <EditorInfoPanel document={document} savePhase={savePhase} statusMessage={statusMessage} />
 
-              <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
-                <FormField
-                  label="Markdown 正文"
-                  message="本次 P0 先使用基础多行输入框打通编辑闭环，后续再接入 CodeMirror。"
-                >
-                  <Textarea
-                    className="min-h-[62vh] resize-y"
-                    onChange={(event) => onContentChange(event.target.value)}
+              <div className="grid gap-5 xl:grid-cols-2">
+                <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-medium text-[var(--color-text-primary)]">Markdown 编辑</h2>
+                    <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
+                      使用 CodeMirror 进行正文编辑，支持常见 Markdown / GFM 语法输入。
+                    </p>
+                  </div>
+                  <CodeMirrorEditor
+                    onChange={onContentChange}
                     placeholder="请输入 Markdown 内容..."
                     value={content}
                   />
-                </FormField>
-              </section>
+                </section>
+
+                <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
+                  <div className="space-y-1">
+                    <h2 className="text-sm font-medium text-[var(--color-text-primary)]">实时预览</h2>
+                    <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
+                      基于 unified 管线实时渲染标题、列表、代码块、表格与任务列表等 GFM 内容。
+                    </p>
+                  </div>
+                  <MarkdownPreview content={content} />
+                </section>
+              </div>
             </div>
           </CardContent>
         </Card>

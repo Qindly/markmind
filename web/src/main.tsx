@@ -1,7 +1,8 @@
-﻿// main.tsx - 应用入口
+// main.tsx - 应用入口
 import ReactDOM from 'react-dom/client';
 
 import { App } from './App';
+import 'katex/dist/katex.min.css';
 import './styles/globals.css';
 
 const rootElement = document.getElementById('root');

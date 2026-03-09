@@ -1,4 +1,4 @@
-﻿/* globals.css - 定义全局配色变量、Toast 动画与基础排版 */
+/* globals.css - 定义全局配色变量、Toast 动画与基础排版 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -56,10 +56,7 @@ body {
   background: rgba(20, 20, 19, 0.1);
 }
 
-button,
-input {
-  font: inherit;
-}
+
 
 @keyframes toast-slide-in {
   from {
@@ -93,4 +90,302 @@ input {
   .animate-toast-hide {
     animation: toast-hide 0.16s ease-in forwards;
   }
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.markmind-editor .cm-editor {
+  height: 100%;
+  background: var(--color-page-bg);
+}
+
+.markmind-editor .cm-focused {
+  outline: none;
+}
+
+.markmind-editor .cm-gutters {
+  background: transparent;
+}
+
+.markdown-preview {
+  color: var(--color-text-primary);
+  line-height: 1.75;
+  font-size: 0.95rem;
+}
+
+.markdown-preview > :first-child {
+  margin-top: 0;
+}
+
+.markdown-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  margin: 1.5em 0 0.75em;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-text-primary);
+}
+
+.markdown-preview h1 {
+  font-size: 1.875rem;
+}
+
+.markdown-preview h2 {
+  font-size: 1.5rem;
+}
+
+.markdown-preview h3 {
+  font-size: 1.25rem;
+}
+
+.markdown-preview p,
+.markdown-preview ul,
+.markdown-preview ol,
+.markdown-preview blockquote,
+.markdown-preview pre,
+.markdown-preview table,
+.markdown-preview hr {
+  margin: 0 0 1rem;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.5rem;
+}
+
+.markdown-preview ol {
+  list-style: decimal;
+}
+
+.markdown-preview ol ol {
+  list-style: lower-alpha;
+}
+
+.markdown-preview ol ol ol {
+  list-style: lower-roman;
+}
+
+.markdown-preview ol > li::marker {
+  color: var(--color-text-secondary);
+}
+
+.markdown-preview ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.markdown-preview ul:not(.contains-task-list) > li {
+  position: relative;
+  padding-left: 1.35rem;
+}
+
+.markdown-preview ul:not(.contains-task-list) > li::before {
+  content: '';
+  position: absolute;
+  top: 0.82em;
+  left: 0.12rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 1px solid var(--color-text-primary);
+  border-radius: 0.08rem;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.markdown-preview ul:not(.contains-task-list) ul {
+  margin-top: 0.45rem;
+  margin-left: 1.1rem;
+}
+
+.markdown-preview ul:not(.contains-task-list) ul > li::before {
+  border-color: var(--color-button-dark);
+  background: var(--color-button-dark);
+}
+
+.markdown-preview ul:not(.contains-task-list) ul ul > li::before {
+  border-color: var(--color-text-primary);
+  background: transparent;
+}
+
+.markdown-preview ul.contains-task-list {
+  padding-left: 0.25rem;
+}
+
+.markdown-preview ul.contains-task-list > li {
+  padding-left: 0;
+}
+
+.markdown-preview li > ul,
+.markdown-preview li > ol {
+  margin-top: 0.45rem;
+}
+
+.markdown-preview li + li {
+  margin-top: 0.35rem;
+}
+
+.markdown-preview li > p {
+  margin-bottom: 0.4rem;
+}
+
+.markdown-preview a {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.markdown-preview blockquote {
+  margin-left: 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+.markdown-preview code {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.markdown-preview :not(pre) > code,
+.markdown-preview li code,
+.markdown-preview td code,
+.markdown-preview th code,
+.markdown-preview blockquote code,
+.markdown-preview p code {
+  padding: 0.14rem 0.35rem;
+  border-radius: 0.5rem;
+  background: rgba(20, 20, 19, 0.05);
+  font-size: 0.875em;
+}
+
+.markdown-preview pre {
+  overflow-x: auto;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 1rem;
+  background: #f3f1e8;
+}
+
+.markdown-preview pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-preview .hljs {
+  display: block;
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.markdown-preview .hljs-comment,
+.markdown-preview .hljs-quote {
+  color: #8e8a7f;
+  font-style: italic;
+}
+
+.markdown-preview .hljs-keyword,
+.markdown-preview .hljs-selector-tag,
+.markdown-preview .hljs-literal,
+.markdown-preview .hljs-section,
+.markdown-preview .hljs-link,
+.markdown-preview .hljs-operator {
+  color: #8c4332;
+}
+
+.markdown-preview .hljs-string,
+.markdown-preview .hljs-attr,
+.markdown-preview .hljs-attribute,
+.markdown-preview .hljs-regexp,
+.markdown-preview .hljs-addition {
+  color: #2f6e5a;
+}
+
+.markdown-preview .hljs-title,
+.markdown-preview .hljs-title.class_,
+.markdown-preview .hljs-title.function_,
+.markdown-preview .hljs-function .hljs-title,
+.markdown-preview .hljs-property,
+.markdown-preview .hljs-built_in {
+  color: #36568f;
+}
+
+.markdown-preview .hljs-number,
+.markdown-preview .hljs-symbol,
+.markdown-preview .hljs-bullet,
+.markdown-preview .hljs-variable,
+.markdown-preview .hljs-template-tag,
+.markdown-preview .hljs-template-variable,
+.markdown-preview .hljs-meta {
+  color: #9a641e;
+}
+
+.markdown-preview .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown-preview .hljs-strong {
+  font-weight: 600;
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-border-soft);
+  vertical-align: top;
+}
+
+.markdown-preview th {
+  font-weight: 600;
+  background: rgba(20, 20, 19, 0.03);
+}
+
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.markdown-preview img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 1rem;
+}
+
+.markdown-preview input[type='checkbox'] {
+  accent-color: var(--color-button-dark);
+}
+
+.markdown-preview .contains-task-list input[type='checkbox'] {
+  margin-right: 0.55rem;
+}
+
+.markdown-preview .katex {
+  color: var(--color-text-primary);
+  font-size: 1.02em;
+}
+
+.markdown-preview .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 0.05rem;
 }

@@ -53,6 +53,7 @@ export function EditorPage() {
       onBack={editor.handleBack}
       onContentChange={editor.handleContentChange}
       onSave={editor.handleSave}
+      savePhase={editor.savePhase}
       statusMessage={editor.statusMessage}
     />
   );
