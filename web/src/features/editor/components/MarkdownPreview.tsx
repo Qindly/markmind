@@ -1,7 +1,7 @@
 ﻿// MarkdownPreview.tsx - 渲染基于 unified 管线生成的 Markdown 实时预览
 import type { RefObject } from 'react';
 
-import { useMermaidPreview } from '../useMermaidPreview';
+import { useSpecialCodeBlockPreview } from '../useSpecialCodeBlockPreview';
 
 export interface MarkdownPreviewProps {
   html: string;
@@ -19,7 +19,7 @@ export function MarkdownPreview({
   hasContent,
   previewContainerRef,
 }: MarkdownPreviewProps) {
-  useMermaidPreview({
+  useSpecialCodeBlockPreview({
     html,
     previewContainerRef,
   });
@@ -28,7 +28,7 @@ export function MarkdownPreview({
     return (
       <div className="flex min-h-[62vh] items-center justify-center rounded-2xl border border-dashed border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-6 py-10 text-center">
         <p className="max-w-sm text-sm leading-7 text-[var(--color-text-secondary)]">
-          开始输入 Markdown 内容后，这里会基于 unified 管线实时显示 GFM、公式、安全 HTML 与 Mermaid 预览。
+          开始输入 Markdown 内容后，这里会基于 unified 管线实时显示 GFM、公式、安全 HTML 与特殊代码块预览。
         </p>
       </div>
     );
