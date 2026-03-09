@@ -36,7 +36,8 @@ export function EditorTocItem({
             aria-expanded={isExpanded}
             className={cn(
               'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-transparent text-[var(--color-text-secondary)] transition hover:bg-[var(--color-button-light-hover)] hover:text-[var(--color-text-primary)]',
-              isActive && 'text-[var(--color-option-selected-text)] hover:text-[var(--color-option-selected-text)]',
+              isActive &&
+                'bg-[var(--color-option-selected)] text-[var(--color-option-selected-text)] hover:bg-[var(--color-option-selected)] hover:text-[var(--color-option-selected-text)]',
             )}
             onClick={() => onToggle(node.id)}
             title={isExpanded ? '收起子标题' : '展开子标题'}
@@ -54,7 +55,7 @@ export function EditorTocItem({
             'w-full rounded-xl border border-transparent px-2.5 py-2 text-left text-sm leading-6 transition',
             node.depth === 1 ? 'font-medium' : 'font-normal',
             isActive
-              ? 'bg-[var(--color-option-selected)] text-[var(--color-option-selected-text)]'
+              ? 'border-[var(--color-border-soft)] bg-[var(--color-option-selected)] text-[var(--color-option-selected-text)]'
               : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-button-light-hover)] hover:text-[var(--color-text-primary)]',
           )}
           onClick={() => onSelect(node.id)}

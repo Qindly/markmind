@@ -1,10 +1,12 @@
-// useEditorToc.ts - 管理编辑页 TOC、预览滚动高亮与 URL hash 同步
+// useEditorToc.ts - 管理编辑页 TOC、页面滚动高亮与 URL hash 同步
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 import { renderMarkdownPreview } from '../../lib/markdownPreview';
 import { buildEditorTocTree, type EditorTocNode } from './buildEditorTocTree';
 
 const PREVIEW_HEADING_SELECTOR = 'h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]';
+const ACTIVE_HEADING_TOP_OFFSET = 144;
+const SCROLL_TARGET_TOP_OFFSET = 16;
 
 export interface UseEditorTocResult {
   previewHtml: string;
@@ -40,16 +42,44 @@ function getCurrentHashHeadingId(): string {
 // replaceHeadingHash - 使用 replaceState 同步当前标题 hash。
 // 参数 headingId: 需要写入地址栏的标题 ID，为 null 时清空 hash。
 function replaceHeadingHash(headingId: string | null) {
+  const nextHash = headingId ? `#${encodeURIComponent(headingId)}` : '';
+  if (window.location.hash === nextHash) {
+    return;
+  }
+
   const url = new URL(window.location.href);
   url.hash = headingId ? encodeURIComponent(headingId) : '';
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
 // getPreviewHeadingElements - 获取当前预览容器中的所有标题元素。
-// 参数 container: 预览滚动容器。
+// 参数 container: 预览容器。
 // 返回值：带锚点 ID 的标题元素数组。
-function getPreviewHeadingElements(container: HTMLDivElement): HTMLElement[] {
+function getPreviewHeadingElements(container: HTMLDivElement | null): HTMLElement[] {
+  if (!container) {
+    return [];
+  }
+
   return Array.from(container.querySelectorAll<HTMLElement>(PREVIEW_HEADING_SELECTOR));
+}
+
+// resolveViewportActiveHeadingId - 根据当前窗口滚动位置推导激活标题。
+// 参数 headingElements: 预览中的所有标题元素。
+// 返回值：当前应高亮的标题 ID。
+function resolveViewportActiveHeadingId(headingElements: HTMLElement[]): string | null {
+  if (headingElements.length === 0) {
+    return null;
+  }
+
+  let activeHeadingId = headingElements[0].id;
+
+  headingElements.forEach((heading) => {
+    if (heading.getBoundingClientRect().top <= ACTIVE_HEADING_TOP_OFFSET) {
+      activeHeadingId = heading.id;
+    }
+  });
+
+  return activeHeadingId;
 }
 
 /**
@@ -143,18 +173,16 @@ export function useEditorToc(content: string): UseEditorTocResult {
   );
 
   const scrollToHeading = useCallback((headingId: string, smooth: boolean) => {
-    const container = previewContainerRef.current;
-    if (!container) {
-      return false;
-    }
-
-    const targetHeading = getPreviewHeadingElements(container).find((heading) => heading.id === headingId);
+    const targetHeading = getPreviewHeadingElements(previewContainerRef.current).find(
+      (heading) => heading.id === headingId,
+    );
     if (!targetHeading) {
       return false;
     }
 
-    container.scrollTo({
-      top: Math.max(targetHeading.offsetTop - 16, 0),
+    const targetTop = window.scrollY + targetHeading.getBoundingClientRect().top - SCROLL_TARGET_TOP_OFFSET;
+    window.scrollTo({
+      top: Math.max(targetTop, 0),
       behavior: smooth ? 'smooth' : 'auto',
     });
 
@@ -167,9 +195,10 @@ export function useEditorToc(content: string): UseEditorTocResult {
         return;
       }
 
+      lastAppliedHashSignatureRef.current = `${headingIdKey}::${headingId}`;
       setActiveHeading(headingId);
     },
-    [scrollToHeading, setActiveHeading],
+    [headingIdKey, scrollToHeading, setActiveHeading],
   );
 
   const handleToggleHeading = useCallback(
@@ -205,7 +234,7 @@ export function useEditorToc(content: string): UseEditorTocResult {
   useEffect(() => {
     if (preview.headings.length === 0) {
       lastAppliedHashSignatureRef.current = '';
-      setActiveHeading(null);
+      setActiveHeading(null, { syncHash: false });
       return;
     }
 
@@ -219,7 +248,10 @@ export function useEditorToc(content: string): UseEditorTocResult {
         ? hashHeadingId
         : preview.headings[0].id;
 
-    setActiveHeading(nextActiveHeadingId);
+    setActiveHeading(nextActiveHeadingId, {
+      syncHash: !hasHashHeading,
+      expandAncestors: true,
+    });
   }, [activeHeadingId, headingIdKey, headingIdSet, preview.headings, setActiveHeading]);
 
   useEffect(() => {
@@ -239,8 +271,12 @@ export function useEditorToc(content: string): UseEditorTocResult {
 
     if (scrollToHeading(hashHeadingId, false)) {
       lastAppliedHashSignatureRef.current = signature;
+      setActiveHeading(hashHeadingId, {
+        syncHash: false,
+        expandAncestors: true,
+      });
     }
-  }, [headingIdKey, headingIdSet, preview.html, preview.headings.length, scrollToHeading]);
+  }, [headingIdKey, headingIdSet, preview.html, preview.headings.length, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
     if (preview.headings.length === 0) {
@@ -270,72 +306,38 @@ export function useEditorToc(content: string): UseEditorTocResult {
   }, [headingIdKey, headingIdSet, preview.headings.length, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
-    const container = previewContainerRef.current;
-    if (!container || preview.headings.length === 0) {
+    if (preview.headings.length === 0) {
       return undefined;
     }
 
-    const headingElements = getPreviewHeadingElements(container);
+    const headingElements = getPreviewHeadingElements(previewContainerRef.current);
     if (headingElements.length === 0) {
       return undefined;
     }
 
-    const previewContainer = container;
-    const visibleHeadingIds = new Set<string>();
+    let rafID = 0;
 
-    function resolveActiveHeadingId() {
-      const visibleHeadings = headingElements
-        .filter((heading) => visibleHeadingIds.has(heading.id))
-        .sort((leftHeading, rightHeading) => leftHeading.offsetTop - rightHeading.offsetTop);
-
-      if (visibleHeadings.length > 0) {
-        return visibleHeadings[visibleHeadings.length - 1].id;
+    function syncActiveHeadingFromViewport() {
+      if (rafID) {
+        cancelAnimationFrame(rafID);
       }
 
-      const scrollThreshold = previewContainer.scrollTop + 20;
-      let fallbackHeadingId = headingElements[0].id;
-
-      headingElements.forEach((heading) => {
-        if (heading.offsetTop <= scrollThreshold) {
-          fallbackHeadingId = heading.id;
-        }
+      rafID = window.requestAnimationFrame(() => {
+        const nextActiveHeadingId = resolveViewportActiveHeadingId(headingElements);
+        setActiveHeading(nextActiveHeadingId);
       });
-
-      return fallbackHeadingId;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const headingId = (entry.target as HTMLElement).id;
-          if (!headingId) {
-            return;
-          }
-
-          if (entry.isIntersecting) {
-            visibleHeadingIds.add(headingId);
-          } else {
-            visibleHeadingIds.delete(headingId);
-          }
-        });
-
-        setActiveHeading(resolveActiveHeadingId());
-      },
-      {
-        root: container,
-        rootMargin: '0px 0px -70% 0px',
-        threshold: 0,
-      },
-    );
-
-    headingElements.forEach((heading) => {
-      observer.observe(heading);
-    });
-
-    setActiveHeading(resolveActiveHeadingId());
+    syncActiveHeadingFromViewport();
+    window.addEventListener('scroll', syncActiveHeadingFromViewport, { passive: true });
+    window.addEventListener('resize', syncActiveHeadingFromViewport);
 
     return () => {
-      observer.disconnect();
+      if (rafID) {
+        cancelAnimationFrame(rafID);
+      }
+      window.removeEventListener('scroll', syncActiveHeadingFromViewport);
+      window.removeEventListener('resize', syncActiveHeadingFromViewport);
     };
   }, [headingIdKey, preview.html, preview.headings.length, setActiveHeading]);
 

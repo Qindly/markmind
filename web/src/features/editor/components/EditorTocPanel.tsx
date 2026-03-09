@@ -1,4 +1,5 @@
 // EditorTocPanel.tsx - 渲染编辑页左侧的目录导航面板
+import { cn } from '../../../lib/cn';
 import type { EditorTocNode } from '../buildEditorTocTree';
 import { EditorTocItem } from './EditorTocItem';
 
@@ -8,6 +9,8 @@ export interface EditorTocPanelProps {
   expandedState: Record<string, boolean>;
   onSelect: (headingId: string) => void;
   onToggle: (headingId: string) => void;
+  className?: string;
+  scrollAreaClassName?: string;
 }
 
 /**
@@ -21,18 +24,25 @@ export function EditorTocPanel({
   expandedState,
   onSelect,
   onToggle,
+  className,
+  scrollAreaClassName,
 }: EditorTocPanelProps) {
   return (
-    <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
+    <section
+      className={cn(
+        'flex flex-col space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5',
+        className,
+      )}
+    >
       <div className="space-y-1">
         <h2 className="text-sm font-medium text-[var(--color-text-primary)]">目录导航</h2>
         <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-          点击标题定位右侧预览，滚动预览时这里也会自动同步当前章节。
+          点击标题定位右侧预览，滚动页面时这里也会自动同步当前章节。
         </p>
       </div>
 
       {tocTree.length > 0 ? (
-        <div className="max-h-[48vh] overflow-auto pr-1">
+        <div className={cn('pr-1', scrollAreaClassName)}>
           <ul className="space-y-1">
             {tocTree.map((node) => (
               <EditorTocItem
