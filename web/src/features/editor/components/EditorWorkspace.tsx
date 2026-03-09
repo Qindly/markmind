@@ -127,7 +127,7 @@ export function EditorWorkspace({
                 <div className="space-y-1">
                   <h2 className="text-sm font-medium text-[var(--color-text-primary)]">实时预览</h2>
                   <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-                    基于 unified 管线实时渲染标题、列表、代码块、公式、目录导航与上传后的图片内容。
+                    基于 unified 管线实时渲染标题、列表、代码块、公式、安全 HTML、Mermaid 与上传后的图片内容。
                   </p>
                 </div>
                 <MarkdownPreview

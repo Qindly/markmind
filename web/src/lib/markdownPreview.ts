@@ -1,6 +1,7 @@
-// markdownPreview.ts - 提供基于 unified 的 Markdown 预览渲染与标题提取能力
+﻿// markdownPreview.ts - 提供基于 unified 的 Markdown 预览渲染、HTML 安全清洗与标题提取能力
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
@@ -32,48 +33,74 @@ export interface MarkdownPreviewResult {
 
 const markdownPreviewSchema: Parameters<typeof rehypeSanitize>[0] = {
   ...defaultSchema,
+  tagNames: Array.from(
+    new Set([
+      ...(defaultSchema.tagNames ?? []),
+      'article',
+      'details',
+      'div',
+      'kbd',
+      'mark',
+      'section',
+      'span',
+      'sub',
+      'summary',
+      'sup',
+    ]),
+  ),
   attributes: {
     ...defaultSchema.attributes,
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'id', 'title'],
+    a: [...(defaultSchema.attributes?.a ?? []), 'title'],
+    article: [...(defaultSchema.attributes?.article ?? []), 'id', 'title'],
     code: [
       ...(defaultSchema.attributes?.code ?? []),
       ['className', /^language-./, 'math-inline', 'math-display'] as const,
     ],
+    details: [...(defaultSchema.attributes?.details ?? []), ['open', true] as const],
+    div: [...(defaultSchema.attributes?.div ?? []), 'id', 'title'],
     h1: [...(defaultSchema.attributes?.h1 ?? []), 'id'],
     h2: [...(defaultSchema.attributes?.h2 ?? []), 'id'],
     h3: [...(defaultSchema.attributes?.h3 ?? []), 'id'],
     h4: [...(defaultSchema.attributes?.h4 ?? []), 'id'],
     h5: [...(defaultSchema.attributes?.h5 ?? []), 'id'],
     h6: [...(defaultSchema.attributes?.h6 ?? []), 'id'],
-    ol: [...(defaultSchema.attributes?.ol ?? []), 'start'],
-    th: [...(defaultSchema.attributes?.th ?? []), 'align'],
-    td: [...(defaultSchema.attributes?.td ?? []), 'align'],
-    ul: [
-      ...(defaultSchema.attributes?.ul ?? []),
-      ['className', 'contains-task-list'] as const,
-    ],
-    li: [
-      ...(defaultSchema.attributes?.li ?? []),
-      ['className', 'task-list-item'] as const,
-    ],
+    img: [...(defaultSchema.attributes?.img ?? []), 'height', 'loading', 'title', 'width'],
     input: [
       ...(defaultSchema.attributes?.input ?? []),
       ['type', 'checkbox'] as const,
       ['checked', true] as const,
       ['disabled', true] as const,
     ],
+    kbd: [...(defaultSchema.attributes?.kbd ?? []), 'title'],
+    li: [
+      ...(defaultSchema.attributes?.li ?? []),
+      ['className', 'task-list-item'] as const,
+    ],
+    mark: [...(defaultSchema.attributes?.mark ?? []), 'title'],
+    ol: [...(defaultSchema.attributes?.ol ?? []), 'start'],
+    p: [...(defaultSchema.attributes?.p ?? []), 'id', 'title'],
+    section: [...(defaultSchema.attributes?.section ?? []), 'id', 'title'],
+    span: [...(defaultSchema.attributes?.span ?? []), 'id', 'title'],
+    td: [...(defaultSchema.attributes?.td ?? []), 'align'],
+    th: [...(defaultSchema.attributes?.th ?? []), 'align'],
+    ul: [
+      ...(defaultSchema.attributes?.ul ?? []),
+      ['className', 'contains-task-list'] as const,
+    ],
   },
 };
 
-// normalizeHeadingText - 将标题文本压缩为空格友好的可读文本。
+// normalizeHeadingText - 将标题文本压缩为适合目录展示的单行内容。
 // 参数 text: 原始标题文本。
-// 返回值：去掉多余空白后的标题字符串。
+// 返回值：去掉多余空白后的标题文本。
 function normalizeHeadingText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
 // extractNodeText - 递归提取节点及其子节点中的可读文本。
 // 参数 node: 当前 HAST 节点。
-// 返回值：适合用于 TOC 展示的纯文本内容。
+// 返回值：适合用于目录展示的纯文本内容。
 function extractNodeText(node: HastNode | undefined): string {
   if (!node) {
     return '';
@@ -126,7 +153,7 @@ function createHeadingSlugger() {
   };
 }
 
-// collectHeadingsPlugin - 为标题节点写入锚点 ID，并同时收集 TOC 数据。
+// collectHeadingsPlugin - 为标题节点写入锚点 ID，并同步收集目录数据。
 // 参数 headings: 当前 Markdown 对应的标题列表。
 function collectHeadingsPlugin(headings: MarkdownHeading[]) {
   return () => {
@@ -160,9 +187,9 @@ function collectHeadingsPlugin(headings: MarkdownHeading[]) {
   };
 }
 
-// renderMarkdownPreview - 将 Markdown 字符串转换为 HTML 与标题目录数据。
+// renderMarkdownPreview - 将 Markdown 字符串转换为 HTML 与目录数据。
 // 参数 markdown: 原始 Markdown 内容。
-// 返回值：包含安全 HTML 与 TOC 标题数组的预览结果。
+// 返回值：包含安全 HTML 与标题数组的预览结果。
 export function renderMarkdownPreview(markdown: string): MarkdownPreviewResult {
   const headings: MarkdownHeading[] = [];
 
@@ -170,7 +197,9 @@ export function renderMarkdownPreview(markdown: string): MarkdownPreviewResult {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkMath)
-    .use(remarkRehype)
+    // 允许先把 Markdown 中的原生 HTML 透传到 rehype，再由后续清洗规则决定保留哪些结构。
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
     .use(rehypeSanitize, markdownPreviewSchema)
     .use(collectHeadingsPlugin(headings))
     .use(rehypeKatex)
