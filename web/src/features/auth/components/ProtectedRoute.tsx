@@ -2,6 +2,7 @@
 import type { PropsWithChildren } from 'react';
 import { Navigate } from 'react-router-dom';
 
+import { PageState } from '../../../components/ui/PageState';
 import { useAuthStore } from '../../../stores/authStore';
 
 /**
@@ -14,7 +15,7 @@ export function ProtectedRoute({ children }: PropsWithChildren) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   if (isBootstrapping) {
-    return <div className="flex min-h-screen items-center justify-center bg-[var(--color-page-bg)] text-sm text-[var(--color-text-secondary)]">正在恢复登录状态...</div>;
+    return <PageState message="正在恢复登录状态..." />;
   }
 
   if (!isAuthenticated) {

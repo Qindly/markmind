@@ -2,6 +2,7 @@
 import { cn } from '../../../lib/cn';
 import type { FolderItem } from '../../../types/dashboard';
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';
+import { DashboardListItem } from './DashboardListItem';
 import { DashboardItemMenu } from './DashboardItemMenu';
 
 export interface FolderSidebarItemProps {
@@ -12,8 +13,7 @@ export interface FolderSidebarItemProps {
   editingValue: string;
   isSaving: boolean;
   onSelect: () => void;
-  onToggleMenu: () => void;
-  onCloseMenu: () => void;
+  onMenuOpenChange: (open: boolean) => void;
   onStartEdit: () => void;
   onDelete: () => void;
   onEditValueChange: (value: string) => void;
@@ -34,8 +34,7 @@ export function FolderSidebarItem({
   editingValue,
   isSaving,
   onSelect,
-  onToggleMenu,
-  onCloseMenu,
+  onMenuOpenChange,
   onStartEdit,
   onDelete,
   onEditValueChange,
@@ -56,28 +55,27 @@ export function FolderSidebarItem({
   }
 
   return (
-    <div
-      className={cn(
-        'flex items-center gap-2 rounded-2xl border px-4 py-2 transition',
-        isSelected
-          ? 'border-[var(--color-option-selected)] bg-[var(--color-option-selected)] text-[var(--color-option-selected-text)]'
-          : 'border-[var(--color-border-soft)] bg-[var(--color-page-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-button-light-hover)]',
-      )}
+    <DashboardListItem
+      action={
+        <DashboardItemMenu
+          isOpen={isMenuOpen}
+          isSelected={isSelected}
+          onDelete={onDelete}
+          onEdit={onStartEdit}
+          onOpenChange={onMenuOpenChange}
+        />
+      }
+      actionClassName="pr-2"
+      buttonClassName="flex items-center justify-between gap-3 px-4 py-2"
+      className={!isSelected ? 'text-[var(--color-text-secondary)]' : undefined}
+      contentClassName="items-center gap-2"
+      isSelected={isSelected}
+      onSelect={onSelect}
     >
-      <button className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left" onClick={onSelect} type="button">
         <span className="truncate font-medium">{folder.name}</span>
         <span className={cn('text-xs', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
           文件夹
         </span>
-      </button>
-      <DashboardItemMenu
-        isOpen={isMenuOpen}
-        isSelected={isSelected}
-        onClose={onCloseMenu}
-        onDelete={onDelete}
-        onEdit={onStartEdit}
-        onToggle={onToggleMenu}
-      />
-    </div>
+    </DashboardListItem>
   );
 }

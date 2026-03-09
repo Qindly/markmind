@@ -13,7 +13,7 @@ export function Toaster() {
     <ToastProvider duration={2600}>
       {toasts.map(({ id, title, description, variant, duration, ...props }) => (
         <Toast duration={duration} key={id} variant={variant} {...props}>
-          <div className="min-w-0 flex-1 pr-1">
+          <div className="min-w-0 flex-1 space-y-1 pr-1">
             {title ? <ToastTitle>{title}</ToastTitle> : null}
             {description ? <ToastDescription>{description}</ToastDescription> : null}
           </div>

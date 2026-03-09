@@ -1,9 +1,11 @@
 // LoginForm.tsx - 处理登录表单的交互与提交
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { loginUser } from '../../../api/auth';
+import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
+import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../lib/getErrorMessage';
 import { useAuthStore } from '../../../stores/authStore';
@@ -20,6 +22,8 @@ interface LoginFormState {
 export function LoginForm() {
   const navigate = useNavigate();
   const setSession = useAuthStore((state) => state.setSession);
+  const identifierId = useId();
+  const passwordId = useId();
   const [formState, setFormState] = useState<LoginFormState>({
     identifier: '',
     password: '',
@@ -59,31 +63,31 @@ export function LoginForm() {
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       {errorMessage ? (
-        <div className="rounded-2xl border border-[var(--color-danger-border)] bg-[var(--color-page-bg)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
-          {errorMessage}
-        </div>
+        <Alert className="shadow-none" variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>账号（邮箱 / 用户名）</span>
+      <FormField htmlFor={identifierId} label="账号（邮箱 / 用户名）">
         <Input
           autoComplete="username"
+          id={identifierId}
           onChange={(event) => updateField('identifier', event.target.value)}
           placeholder="请输入邮箱或用户名"
           value={formState.identifier}
         />
-      </label>
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>密码</span>
+      <FormField htmlFor={passwordId} label="密码">
         <Input
           autoComplete="current-password"
+          id={passwordId}
           onChange={(event) => updateField('password', event.target.value)}
           placeholder="请输入密码"
           type="password"
           value={formState.password}
         />
-      </label>
+      </FormField>
 
       <Button isLoading={isSubmitting} type="submit">
         登录

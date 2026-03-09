@@ -1,9 +1,11 @@
 // RegisterForm.tsx - 处理注册表单的交互与提交
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { registerUser } from '../../../api/auth';
+import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
+import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { getErrorMessage } from '../../../lib/getErrorMessage';
 
@@ -20,6 +22,10 @@ interface RegisterFormState {
  */
 export function RegisterForm() {
   const navigate = useNavigate();
+  const usernameId = useId();
+  const emailId = useId();
+  const passwordId = useId();
+  const confirmPasswordId = useId();
   const [formState, setFormState] = useState<RegisterFormState>({
     username: '',
     email: '',
@@ -70,35 +76,40 @@ export function RegisterForm() {
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       {errorMessage ? (
-        <div className="rounded-2xl border border-[var(--color-danger-border)] bg-[var(--color-page-bg)] px-4 py-3 text-sm text-[var(--color-danger-text)]">
-          {errorMessage}
-        </div>
+        <Alert className="shadow-none" variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       ) : null}
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>用户名</span>
-        <Input onChange={(event) => updateField('username', event.target.value)} placeholder="例如 ice" value={formState.username} />
-      </label>
+      <FormField htmlFor={usernameId} label="用户名">
+        <Input autoComplete="username" id={usernameId} onChange={(event) => updateField('username', event.target.value)} placeholder="例如 ice" value={formState.username} />
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>邮箱</span>
+      <FormField htmlFor={emailId} label="邮箱">
         <Input
+          autoComplete="email"
+          id={emailId}
           onChange={(event) => updateField('email', event.target.value)}
           placeholder="name@example.com"
           type="email"
           value={formState.email}
         />
-      </label>
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>密码</span>
-        <Input onChange={(event) => updateField('password', event.target.value)} type="password" value={formState.password} />
-      </label>
+      <FormField htmlFor={passwordId} label="密码">
+        <Input autoComplete="new-password" id={passwordId} onChange={(event) => updateField('password', event.target.value)} placeholder="请输入密码" type="password" value={formState.password} />
+      </FormField>
 
-      <label className="block space-y-2 text-sm font-medium text-[var(--color-text-primary)]">
-        <span>确认密码</span>
-        <Input onChange={(event) => updateField('confirmPassword', event.target.value)} type="password" value={formState.confirmPassword} />
-      </label>
+      <FormField htmlFor={confirmPasswordId} label="确认密码">
+        <Input
+          autoComplete="new-password"
+          id={confirmPasswordId}
+          onChange={(event) => updateField('confirmPassword', event.target.value)}
+          placeholder="请再次输入密码"
+          type="password"
+          value={formState.confirmPassword}
+        />
+      </FormField>
 
       <Button isLoading={isSubmitting} type="submit">
         注册

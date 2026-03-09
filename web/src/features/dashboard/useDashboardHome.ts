@@ -144,6 +144,7 @@ export function useDashboardHome() {
       setSelectedDocumentId(null);
       setMenuState(null);
       setEditingState(null);
+      toast({ description: `已创建文件夹「${response.folder.name}」` });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建文件夹失败，请稍后重试'));
       throw error;
@@ -162,6 +163,7 @@ export function useDashboardHome() {
       setSelectedDocumentId(response.document.id);
       setMenuState(null);
       setEditingState(null);
+      toast({ description: `已创建文档「${response.document.title}」` });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建空文档失败，请稍后重试'));
     } finally {
@@ -183,23 +185,39 @@ export function useDashboardHome() {
 
   function handleOpenFolderMenu(folderId: number) {
     setEditingState(null);
-    setMenuState((currentMenu) => {
-      if (currentMenu?.type === 'folder' && currentMenu.id === folderId) {
-        return null;
-      }
-
-      return { type: 'folder', id: folderId };
-    });
+    setMenuState({ type: 'folder', id: folderId });
   }
 
   function handleOpenDocumentMenu(documentId: number) {
     setEditingState(null);
+    setMenuState({ type: 'document', id: documentId });
+  }
+
+  function handleCloseFolderMenu(folderId?: number) {
     setMenuState((currentMenu) => {
-      if (currentMenu?.type === 'document' && currentMenu.id === documentId) {
-        return null;
+      if (currentMenu?.type !== 'folder') {
+        return currentMenu;
       }
 
-      return { type: 'document', id: documentId };
+      if (folderId !== undefined && currentMenu.id !== folderId) {
+        return currentMenu;
+      }
+
+      return null;
+    });
+  }
+
+  function handleCloseDocumentMenu(documentId?: number) {
+    setMenuState((currentMenu) => {
+      if (currentMenu?.type !== 'document') {
+        return currentMenu;
+      }
+
+      if (documentId !== undefined && currentMenu.id !== documentId) {
+        return currentMenu;
+      }
+
+      return null;
     });
   }
 
@@ -243,6 +261,7 @@ export function useDashboardHome() {
           currentFolders.map((folder) => (folder.id === response.folder.id ? response.folder : folder)),
         );
         setEditingState(null);
+        toast({ description: `已重命名文件夹为「${response.folder.name}」` });
       } catch (error) {
         setErrorMessage(getErrorMessage(error, '修改文件夹失败，请稍后重试'));
       } finally {
@@ -260,6 +279,7 @@ export function useDashboardHome() {
         sortDocuments(currentDocuments.map((document) => (document.id === response.document.id ? response.document : document))),
       );
       setEditingState(null);
+      toast({ description: `已重命名文档为「${response.document.title}」` });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '修改文档失败，请稍后重试'));
     } finally {
@@ -356,8 +376,8 @@ export function useDashboardHome() {
     handleSelectDocument,
     handleOpenFolderMenu,
     handleOpenDocumentMenu,
-    handleCloseFolderMenu: () => setMenuState(null),
-    handleCloseDocumentMenu: () => setMenuState(null),
+    handleCloseFolderMenu,
+    handleCloseDocumentMenu,
     handleStartFolderEditing,
     handleStartDocumentEditing,
     handleChangeEditingValue,

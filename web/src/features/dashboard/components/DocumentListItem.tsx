@@ -2,6 +2,7 @@
 import { cn } from '../../../lib/cn';
 import type { DocumentItem } from '../../../types/dashboard';
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';
+import { DashboardListItem } from './DashboardListItem';
 import { DashboardItemMenu } from './DashboardItemMenu';
 
 export interface DocumentListItemProps {
@@ -12,8 +13,7 @@ export interface DocumentListItemProps {
   editingValue: string;
   isSaving: boolean;
   onSelect: () => void;
-  onToggleMenu: () => void;
-  onCloseMenu: () => void;
+  onMenuOpenChange: (open: boolean) => void;
   onStartEdit: () => void;
   onDelete: () => void;
   onEditValueChange: (value: string) => void;
@@ -48,8 +48,7 @@ export function DocumentListItem({
   editingValue,
   isSaving,
   onSelect,
-  onToggleMenu,
-  onCloseMenu,
+  onMenuOpenChange,
   onStartEdit,
   onDelete,
   onEditValueChange,
@@ -70,35 +69,33 @@ export function DocumentListItem({
   }
 
   return (
-    <div
-      className={cn(
-        'rounded-2xl border px-5 py-4 transition',
-        isSelected
-          ? 'border-[var(--color-option-selected)] bg-[var(--color-option-selected)] text-[var(--color-option-selected-text)]'
-          : 'border-[var(--color-border-soft)] bg-[var(--color-page-bg)] text-[var(--color-text-primary)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-button-light-hover)]',
-      )}
+    <DashboardListItem
+      action={
+        <DashboardItemMenu
+          isOpen={isMenuOpen}
+          isSelected={isSelected}
+          onDelete={onDelete}
+          onEdit={onStartEdit}
+          onOpenChange={onMenuOpenChange}
+        />
+      }
+      actionClassName="pr-3 pt-4"
+      buttonClassName="px-5 py-4"
+      contentClassName="items-start"
+      isSelected={isSelected}
+      onSelect={onSelect}
     >
-      <div className="flex items-start gap-3">
-        <button className="min-w-0 flex-1 text-left" onClick={onSelect} type="button">
+      <div className="space-y-3">
           <div className="flex items-start justify-between gap-4">
             <span className="truncate text-base font-medium">{document.title}</span>
             <span className={cn('text-xs', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
               #{document.id}
             </span>
           </div>
-          <p className={cn('mt-3 text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
+          <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
             更新时间：{formatUpdatedAt(document.updated_at)}
           </p>
-        </button>
-        <DashboardItemMenu
-          isOpen={isMenuOpen}
-          isSelected={isSelected}
-          onClose={onCloseMenu}
-          onDelete={onDelete}
-          onEdit={onStartEdit}
-          onToggle={onToggleMenu}
-        />
       </div>
-    </div>
+    </DashboardListItem>
   );
 }

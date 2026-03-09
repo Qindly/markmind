@@ -1,4 +1,4 @@
-// Toast.tsx - 鎻愪緵鍩轰簬 Radix Toast 鐨?shadcn/ui 椋庢牸娑堟伅缁勪欢
+// Toast.tsx - 提供基于 Radix Toast 的 shadcn/ui 风格消息组件
 import * as React from 'react';
 
 import * as ToastPrimitives from '@radix-ui/react-toast';
@@ -10,7 +10,9 @@ import { cn } from '../../lib/cn';
 export const ToastProvider = ToastPrimitives.Provider;
 
 /**
- * ToastViewport - 鍏ㄧ珯娑堟伅鐨勯《閮ㄥ眳涓鍣ㄣ€? * 杩斿洖鍊硷細娑堟伅瑙嗗彛 JSX 缁撴瀯銆? */
+ * ToastViewport - 全站顶部消息的视口容器。
+ * 返回值：消息视口 JSX 结构。
+ */
 export const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
@@ -49,7 +51,10 @@ export interface ToastProps
     VariantProps<typeof toastVariants> {}
 
 /**
- * Toast - 鍗曟潯娑堟伅缁勪欢銆? * 鍙傛暟 props: Toast 鍘熻灞炴€т笌瑙嗚鍙樹綋銆? * 杩斿洖鍊硷細鍗曟潯娑堟伅 JSX 缁撴瀯銆? */
+ * Toast - 单条消息组件。
+ * 参数 props: Toast 原语属性与视觉变体。
+ * 返回值：单条消息 JSX 结构。
+ */
 export const Toast = React.forwardRef<React.ElementRef<typeof ToastPrimitives.Root>, ToastProps>(
   ({ className, variant, ...props }, ref) => {
     return <ToastPrimitives.Root className={cn(toastVariants({ variant }), className)} ref={ref} {...props} />;
@@ -59,7 +64,9 @@ export const Toast = React.forwardRef<React.ElementRef<typeof ToastPrimitives.Ro
 Toast.displayName = ToastPrimitives.Root.displayName;
 
 /**
- * ToastTitle - 娑堟伅鏍囬銆? * 杩斿洖鍊硷細鏍囬 JSX 缁撴瀯銆? */
+ * ToastTitle - 消息标题。
+ * 返回值：标题 JSX 结构。
+ */
 export const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
@@ -70,7 +77,9 @@ export const ToastTitle = React.forwardRef<
 ToastTitle.displayName = ToastPrimitives.Title.displayName;
 
 /**
- * ToastDescription - 娑堟伅姝ｆ枃銆? * 杩斿洖鍊硷細姝ｆ枃 JSX 缁撴瀯銆? */
+ * ToastDescription - 消息正文。
+ * 返回值：正文 JSX 结构。
+ */
 export const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
@@ -81,7 +90,9 @@ export const ToastDescription = React.forwardRef<
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
 
 /**
- * ToastClose - 娑堟伅鍏抽棴鎸夐挳銆? * 杩斿洖鍊硷細鍏抽棴鎸夐挳 JSX 缁撴瀯銆? */
+ * ToastClose - 消息关闭按钮。
+ * 返回值：关闭按钮 JSX 结构。
+ */
 export const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
