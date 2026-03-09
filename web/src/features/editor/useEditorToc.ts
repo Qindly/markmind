@@ -1,4 +1,4 @@
-// useEditorToc.ts - 管理编辑页 TOC、页面滚动高亮与 URL hash 同步
+﻿// useEditorToc.ts - 管理编辑页 TOC、页面滚动高亮与 URL hash 同步
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 import { renderMarkdownPreview } from '../../lib/markdownPreview';
@@ -106,7 +106,7 @@ export function useEditorToc(content: string): UseEditorTocResult {
 
   const headingIdSet = useMemo(
     () => new Set(preview.headings.map((heading) => heading.id)),
-    [headingIdKey],
+    [preview.headings],
   );
 
   const { tree: tocTree, ancestorMap, expandableIds } = useMemo(

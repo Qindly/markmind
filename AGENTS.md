@@ -144,7 +144,7 @@ markmind/                          # 项目根目录（Git Monorepo）
 ### 5.1 通用规范
 
 - **注释语言**：所有代码注释**必须使用中文**。包括函数注释、行内注释、文件头说明。
-- **中文编码**：所有包含中文的 Markdown、Go、TypeScript、TSX 文本文件统一使用 **UTF-8 with BOM** 编码。
+- **中文编码**：所有包含中文的 Markdown、Go、TypeScript、TSX 文本文件统一使用 **UTF-8 with BOM** 编码；修改已有中文文件时也必须保留或转换为 **UTF-8 with BOM**。
 - **中文写入方式**：编辑中文文件时，优先使用不会经过 PowerShell 控制台转码的写入方式；不要使用 here-string、管道输出等高风险方式直接写入中文内容。
 - **Git Commit**：每次任务完成后生成规范的 git commit message（见第 8 节）。
 - **不要过度设计，也不要欠设计**：代码应该刚好满足当前需求，但预留合理的扩展空间。

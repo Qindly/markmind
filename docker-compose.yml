@@ -48,13 +48,15 @@ services:
       COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
       AUTH_RATE_LIMIT_WINDOW: ${AUTH_RATE_LIMIT_WINDOW}
       AUTH_RATE_LIMIT_MAX_REQUESTS: ${AUTH_RATE_LIMIT_MAX_REQUESTS}
+      UPLOAD_ROOT_DIR: ${UPLOAD_ROOT_DIR:-/app/data/uploads}
+      UPLOAD_PUBLIC_BASE_PATH: ${UPLOAD_PUBLIC_BASE_PATH:-/uploads}
     depends_on:
       - postgres
       - redis
     ports:
       - "58001:8080"
     volumes:
-      - uploads_data:/app/uploads
+      - ./data/uploads:/app/data/uploads
     networks:
       - markmind_network
 
@@ -72,7 +74,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  uploads_data:
 
 networks:
   markmind_network:

@@ -23,6 +23,7 @@ func NewRouter(
 	authHandler *AuthHandler,
 	dashboardHandler *DashboardHandler,
 	documentHandler *DocumentHandler,
+	uploadHandler *UploadHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimitMiddleware *middleware.RateLimitMiddleware,
 ) (*gin.Engine, error) {
@@ -36,6 +37,7 @@ func NewRouter(
 	router.GET("/healthz", func(ctx *gin.Context) {
 		WriteSuccess(ctx, http.StatusOK, gin.H{"status": "ok"})
 	})
+	router.StaticFS(cfg.UploadPublicBasePath, gin.Dir(cfg.UploadRootDir, false))
 
 	api := router.Group("/api/v1")
 	protected := api.Group("")
@@ -50,6 +52,7 @@ func NewRouter(
 		protected.PUT("/documents/:id", dashboardHandler.UpdateDocument)
 		protected.PUT("/documents/:id/content", documentHandler.UpdateDocumentContent)
 		protected.DELETE("/documents/:id", dashboardHandler.DeleteDocument)
+		protected.POST("/uploads/images", uploadHandler.UploadImage)
 	}
 
 	auth := api.Group("/auth")

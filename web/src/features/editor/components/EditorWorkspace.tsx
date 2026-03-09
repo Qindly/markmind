@@ -1,4 +1,5 @@
-// EditorWorkspace.tsx - 渲染编辑页的编辑器、预览区、左侧概览卡片与固定目录导航
+﻿// EditorWorkspace.tsx - 渲染编辑页的编辑器、预览区、左侧概览卡片与固定目录导航
+import type { EditorView } from '@codemirror/view';
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
@@ -10,7 +11,6 @@ import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EditorInfoPanel } from './EditorInfoPanel';
 import { EditorTocPanel } from './EditorTocPanel';
 import { MarkdownPreview } from './MarkdownPreview';
-
 export interface EditorWorkspaceProps {
   document: DocumentDetail;
   content: string;
@@ -19,16 +19,13 @@ export interface EditorWorkspaceProps {
   savePhase: DocumentSavePhase;
   isDirty: boolean;
   isSaving: boolean;
+  uploadingImageCount: number;
   onBack: () => void;
   onContentChange: (value: string) => void;
+  onImagePaste: (imageFiles: File[], view: EditorView) => Promise<void>;
   onSave: () => Promise<void>;
 }
-
-/**
- * EditorWorkspace - 展示编辑页标题、左侧概览栏、CodeMirror 编辑器与实时预览。
- * 参数 props: 文档详情、保存状态与交互回调。
- * 返回值：编辑页主体 JSX 结构。
- */
+/** EditorWorkspace - 展示编辑页标题、左侧概览栏、CodeMirror 编辑器与实时预览。 */
 export function EditorWorkspace({
   document,
   content,
@@ -37,22 +34,19 @@ export function EditorWorkspace({
   savePhase,
   isDirty,
   isSaving,
+  uploadingImageCount,
   onBack,
   onContentChange,
+  onImagePaste,
   onSave,
 }: EditorWorkspaceProps) {
   const editorToc = useEditorToc(content);
-
+  const isUploadingImages = uploadingImageCount > 0;
   return (
     <main className="min-h-screen px-3 py-4 text-[var(--color-text-primary)] sm:px-4 sm:py-5">
       <div className="hidden xl:block">
         <div className="fixed left-4 top-4 z-20 flex h-[calc(100vh-2rem)] w-[280px] flex-col gap-4">
-          <EditorInfoPanel
-            className="shrink-0"
-            document={document}
-            savePhase={savePhase}
-            statusMessage={statusMessage}
-          />
+          <EditorInfoPanel className="shrink-0" document={document} savePhase={savePhase} statusMessage={statusMessage} />
           <EditorTocPanel
             activeHeadingId={editorToc.activeHeadingId}
             className="min-h-0 flex-1"
@@ -91,7 +85,6 @@ export function EditorWorkspace({
               title={document.title}
             />
           </CardHeader>
-
           <CardContent className="space-y-5 p-6 pt-6">
             {errorMessage ? (
               <Alert className="shadow-none" variant="destructive">
@@ -109,17 +102,22 @@ export function EditorWorkspace({
                 tocTree={editorToc.tocTree}
               />
             </div>
-
             <div className="grid gap-5 xl:grid-cols-2">
               <section className="space-y-4 rounded-3xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-5">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <h2 className="text-sm font-medium text-[var(--color-text-primary)]">Markdown 编辑</h2>
                   <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-                    使用 CodeMirror 进行正文编辑，支持常见 Markdown / GFM 语法输入。
+                    使用 CodeMirror 进行正文编辑，支持常见 Markdown / GFM 语法输入与截图粘贴上传。
                   </p>
+                  {isUploadingImages ? (
+                    <p className="text-xs leading-5 text-[var(--color-text-secondary)]">
+                      正在上传 {uploadingImageCount} 张图片，完成后会自动插入到当前粘贴位置。
+                    </p>
+                  ) : null}
                 </div>
                 <CodeMirrorEditor
                   onChange={onContentChange}
+                  onImagePaste={onImagePaste}
                   placeholder="请输入 Markdown 内容..."
                   value={content}
                 />
@@ -129,7 +127,7 @@ export function EditorWorkspace({
                 <div className="space-y-1">
                   <h2 className="text-sm font-medium text-[var(--color-text-primary)]">实时预览</h2>
                   <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-                    基于 unified 管线实时渲染标题、列表、代码块、公式与可折叠目录导航。
+                    基于 unified 管线实时渲染标题、列表、代码块、公式、目录导航与上传后的图片内容。
                   </p>
                 </div>
                 <MarkdownPreview

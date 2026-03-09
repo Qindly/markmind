@@ -473,6 +473,50 @@
 }
 ```
 
+### 上传编辑器图片
+- **请求方式**：POST
+- **路由**：`/api/v1/uploads/images`
+- **是否需要鉴权**：是
+- **说明**：用于处理编辑器内截图或剪贴板图片上传，成功后返回可直接写入 Markdown 的相对访问地址
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| image | body(form-data) | file | 是 | 单张图片文件，支持 `png`、`jpg`、`jpeg`、`webp`、`gif`，最大 10MB |
+
+#### 返回样例
+
+**成功（201）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "image": {
+      "url": "/uploads/2026/03/7a9fe2f0f50c1ab9c8f1dfc2f08f2d74.webp"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40011,
+  "message": "图片大小不能超过 10MB"
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40012,
+  "message": "仅支持 png、jpg、jpeg、webp、gif 格式的图片"
+}
+```
+
 ### 删除文档
 - **请求方式**：DELETE
 - **路由**：`/api/v1/documents/:id`

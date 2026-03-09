@@ -53,17 +53,27 @@ func main() {
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
 	documentService := service.NewDocumentService(documentRepository)
+	uploadService := service.NewUploadService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	documentHandler := handler.NewDocumentHandler(documentService)
+	uploadHandler := handler.NewUploadHandler(uploadService)
 
 	if cfg.GinMode == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router, err := handler.NewRouter(cfg, authHandler, dashboardHandler, documentHandler, authMiddleware, rateLimitMiddleware)
+	router, err := handler.NewRouter(
+		cfg,
+		authHandler,
+		dashboardHandler,
+		documentHandler,
+		uploadHandler,
+		authMiddleware,
+		rateLimitMiddleware,
+	)
 	if err != nil {
 		log.Fatalf("初始化路由失败: %v", err)
 	}

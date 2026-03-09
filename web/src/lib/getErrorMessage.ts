@@ -12,5 +12,9 @@ export function getErrorMessage(error: unknown, fallback = '请求失败，请�
     return error.response?.data?.message ?? fallback;
   }
 
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message;
+  }
+
   return fallback;
 }

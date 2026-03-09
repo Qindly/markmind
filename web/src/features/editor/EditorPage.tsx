@@ -5,6 +5,7 @@ import { InfoBlock } from '../../components/ui/InfoBlock';
 import { PageState } from '../../components/ui/PageState';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { useDocumentEditor } from './useDocumentEditor';
+import { useDocumentImageUpload } from './useDocumentImageUpload';
 
 /**
  * EditorPage - 文档编辑页入口组件。
@@ -12,6 +13,7 @@ import { useDocumentEditor } from './useDocumentEditor';
  */
 export function EditorPage() {
   const editor = useDocumentEditor();
+  const imageUpload = useDocumentImageUpload();
 
   if (editor.isLoading) {
     return <PageState message="正在加载文档内容..." />;
@@ -52,9 +54,11 @@ export function EditorPage() {
       isSaving={editor.isSaving}
       onBack={editor.handleBack}
       onContentChange={editor.handleContentChange}
+      onImagePaste={imageUpload.handleImagePaste}
       onSave={editor.handleSave}
       savePhase={editor.savePhase}
       statusMessage={editor.statusMessage}
+      uploadingImageCount={imageUpload.uploadingImageCount}
     />
   );
 }
