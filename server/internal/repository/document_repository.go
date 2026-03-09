@@ -1,4 +1,4 @@
-// document_repository.go - 封装文档相关的 PostgreSQL 操作
+﻿// document_repository.go - 封装文档相关的 PostgreSQL 操作
 package repository
 
 import (
@@ -20,6 +20,7 @@ type DocumentRepository interface {
 	CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error)
 	FindDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) (*model.Document, error)
 	UpdateDocumentTitleByIDAndUserID(ctx context.Context, documentID int64, userID int64, title string) (*model.Document, error)
+	UpdateDocumentContentByIDAndUserID(ctx context.Context, documentID int64, userID int64, content string) (*model.Document, error)
 	DeleteDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) error
 }
 
@@ -131,6 +132,26 @@ func (repository *documentRepository) UpdateDocumentTitleByIDAndUserID(ctx conte
 		}
 
 		return nil, fmt.Errorf("更新文档失败: %w", err)
+	}
+
+	return updatedDocument, nil
+}
+
+func (repository *documentRepository) UpdateDocumentContentByIDAndUserID(ctx context.Context, documentID int64, userID int64, content string) (*model.Document, error) {
+	query := `
+		UPDATE documents
+		SET content = $3, updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+		RETURNING id, user_id, folder_id, title, content, created_at, updated_at
+	`
+
+	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, documentID, userID, content))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, appconst.ErrDocumentNotFound
+		}
+
+		return nil, fmt.Errorf("更新文档内容失败: %w", err)
 	}
 
 	return updatedDocument, nil

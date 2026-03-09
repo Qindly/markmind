@@ -1,4 +1,4 @@
-# MarkMind API 文档
+﻿# MarkMind API 文档
 
 ## 统一响应格式
 
@@ -494,6 +494,87 @@
   "message": "success",
   "data": {
     "deleted_id": 11
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```
+
+### 获取文档详情
+- **请求方式**：GET
+- **路由**：`/api/v1/documents/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": 3,
+      "title": "React Hooks 速记",
+      "content": "# React Hooks\n\n这里是文档正文。",
+      "created_at": "2026-03-09T10:00:00Z",
+      "updated_at": "2026-03-09T10:30:00Z"
+    }
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```
+
+### 更新文档正文
+- **请求方式**：PUT
+- **路由**：`/api/v1/documents/:id/content`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+| content | body(json) | string | 是 | 文档正文内容，允许为空字符串 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": 3,
+      "title": "React Hooks 速记",
+      "content": "# React Hooks\n\n已更新的正文内容。",
+      "created_at": "2026-03-09T10:00:00Z",
+      "updated_at": "2026-03-09T11:00:00Z"
+    }
   }
 }
 ```

@@ -1,4 +1,4 @@
-// DashboardPage.tsx - 渲染登录后的首页文档列表与目录管理入口
+﻿// DashboardPage.tsx - 渲染登录后的首页文档列表与目录管理入口
 import { Alert, AlertDescription } from '../../components/ui/Alert';
 import { DashboardDeleteDialog } from './components/DashboardDeleteDialog';
 import { DocumentListPanel } from './components/DocumentListPanel';

@@ -1,4 +1,4 @@
-// main.tsx - 应用入口
+﻿// main.tsx - 应用入口
 import ReactDOM from 'react-dom/client';
 
 import { App } from './App';

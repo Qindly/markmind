@@ -1,4 +1,4 @@
-// Alert.tsx - 提供基于 shadcn/ui 风格封装的提示块组件
+﻿// Alert.tsx - 提供基于 shadcn/ui 风格封装的提示块组件
 import * as React from 'react';
 
 import { cva, type VariantProps } from 'class-variance-authority';

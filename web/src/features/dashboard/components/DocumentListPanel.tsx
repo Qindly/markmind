@@ -1,4 +1,4 @@
-// DocumentListPanel.tsx - 渲染首页右侧文档列表与创建入口
+﻿// DocumentListPanel.tsx - 渲染首页右侧文档列表与创建入口
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';

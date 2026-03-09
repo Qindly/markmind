@@ -1,4 +1,4 @@
-// FolderSidebarHeader.tsx - 渲染目录栏顶部的用户摘要与区块标题
+﻿// FolderSidebarHeader.tsx - 渲染目录栏顶部的用户摘要与区块标题
 import { Button } from '../../../components/ui/Button';
 import { InfoBlock } from '../../../components/ui/InfoBlock';
 import { SectionHeader } from '../../../components/ui/SectionHeader';

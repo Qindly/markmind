@@ -1,4 +1,4 @@
-// App.tsx - 配置应用根路由与全站顶部消息容器
+﻿// App.tsx - 配置应用根路由与全站顶部消息容器
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { Toaster } from './components/ui/Toaster';
@@ -7,6 +7,7 @@ import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
+import { EditorPage } from './features/editor/EditorPage';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 
 /**
@@ -42,6 +43,14 @@ export function App() {
             </ProtectedRoute>
           }
           path="/"
+        />
+        <Route
+          element={
+            <ProtectedRoute>
+              <EditorPage />
+            </ProtectedRoute>
+          }
+          path="/documents/:id/edit"
         />
         <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>

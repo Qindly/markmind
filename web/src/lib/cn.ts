@@ -1,4 +1,4 @@
-// cn.ts - 提供 shadcn/ui 风格的类名合并工具
+﻿// cn.ts - 提供 shadcn/ui 风格的类名合并工具
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 

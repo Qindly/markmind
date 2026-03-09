@@ -1,4 +1,4 @@
-// cors_middleware.go - 配置前后端分离场景下的跨域响应头
+﻿// cors_middleware.go - 配置前后端分离场景下的跨域响应头
 package middleware
 
 import (

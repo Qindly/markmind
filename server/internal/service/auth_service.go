@@ -1,4 +1,4 @@
-// auth_service.go - 编排注册登录刷新登出等鉴权业务逻辑
+﻿// auth_service.go - 编排注册登录刷新登出等鉴权业务逻辑
 package service
 
 import (

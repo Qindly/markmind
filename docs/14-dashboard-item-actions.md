@@ -1,4 +1,4 @@
-# 14-dashboard-item-actions
+﻿# 14-dashboard-item-actions
 
 ## 本次任务做了什么
 为首页 Dashboard 的文件夹项与文档项补齐了“修改 / 删除”操作链路，包含后端删改接口、前端三点菜单、行内编辑、删除确认弹层，以及删除成功后的红色 toast 提示。同时把当前项目的最新配色规范正式写入了 `AGENTS.md`，避免后续样式继续漂移。

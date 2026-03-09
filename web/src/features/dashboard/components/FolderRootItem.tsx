@@ -1,4 +1,4 @@
-// FolderRootItem.tsx - 渲染左侧目录栏中的根目录条目
+﻿// FolderRootItem.tsx - 渲染左侧目录栏中的根目录条目
 import { cn } from '../../../lib/cn';
 import { DashboardListItem } from './DashboardListItem';
 

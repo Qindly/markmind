@@ -1,4 +1,4 @@
-// auth_middleware.go - 校验 Access Token 并向上下文注入用户信息
+﻿// auth_middleware.go - 校验 Access Token 并向上下文注入用户信息
 package middleware
 
 import (

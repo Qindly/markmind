@@ -1,4 +1,4 @@
-// Toaster.tsx - 渲染全站顶部消息容器
+﻿// Toaster.tsx - 渲染全站顶部消息容器
 import { useToast } from '../../hooks/useToast';
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from './Toast';
 

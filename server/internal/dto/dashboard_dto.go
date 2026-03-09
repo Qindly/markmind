@@ -1,4 +1,4 @@
-// dashboard_dto.go - 定义首页列表与文件夹/文档操作相关的请求响应结构体
+﻿// dashboard_dto.go - 定义首页列表与文件夹/文档操作相关的请求响应结构体
 package dto
 
 import "time"

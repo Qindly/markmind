@@ -1,4 +1,4 @@
-// FolderCreateForm.tsx - 渲染首页左侧目录栏中的新建文件夹表单
+﻿// FolderCreateForm.tsx - 渲染首页左侧目录栏中的新建文件夹表单
 import type { FormEvent } from 'react';
 
 import { Button } from '../../../components/ui/Button';

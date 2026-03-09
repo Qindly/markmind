@@ -1,4 +1,4 @@
-// migrator.go - 负责按顺序执行 SQL 迁移文件
+﻿// migrator.go - 负责按顺序执行 SQL 迁移文件
 package repository
 
 import (

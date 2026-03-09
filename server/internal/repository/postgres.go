@@ -1,4 +1,4 @@
-// postgres.go - 负责初始化 PostgreSQL 连接池
+﻿// postgres.go - 负责初始化 PostgreSQL 连接池
 package repository
 
 import (

@@ -1,4 +1,4 @@
-// GuestRoute.tsx - 保护仅游客可访问的页面
+﻿// GuestRoute.tsx - 保护仅游客可访问的页面
 import type { PropsWithChildren } from 'react';
 import { Navigate } from 'react-router-dom';
 

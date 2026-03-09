@@ -1,4 +1,4 @@
-// FolderSidebar.tsx - 渲染首页左侧目录栏与文件夹创建入口
+﻿// FolderSidebar.tsx - 渲染首页左侧目录栏与文件夹创建入口
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent } from '../../../components/ui/Card';

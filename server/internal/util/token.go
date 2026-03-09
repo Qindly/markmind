@@ -1,4 +1,4 @@
-// token.go - 生成随机 Refresh Token
+﻿// token.go - 生成随机 Refresh Token
 package util
 
 import (

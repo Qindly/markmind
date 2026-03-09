@@ -1,4 +1,4 @@
-// response.go - 统一处理 API 成功与失败响应
+﻿// response.go - 统一处理 API 成功与失败响应
 package handler
 
 import (

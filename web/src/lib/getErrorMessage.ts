@@ -1,4 +1,4 @@
-// getErrorMessage.ts - 从请求异常中提取适合展示给用户的错误文案
+﻿// getErrorMessage.ts - 从请求异常中提取适合展示给用户的错误文案
 import axios from 'axios';
 
 import type { ApiErrorResponse } from '../types/api';

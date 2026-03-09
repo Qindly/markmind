@@ -1,4 +1,4 @@
-// FieldMessage.tsx - 提供表单字段提示与错误文案组件
+﻿// FieldMessage.tsx - 提供表单字段提示与错误文案组件
 import type { HTMLAttributes } from 'react';
 
 import { cva, type VariantProps } from 'class-variance-authority';

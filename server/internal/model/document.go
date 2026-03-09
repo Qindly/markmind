@@ -1,4 +1,4 @@
-// document.go - 定义 documents 表对应的数据模型
+﻿// document.go - 定义 documents 表对应的数据模型
 package model
 
 import "time"

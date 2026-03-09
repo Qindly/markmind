@@ -1,4 +1,4 @@
-// dashboard.ts - 定义首页文件夹与文档列表相关类型
+﻿// dashboard.ts - 定义首页文件夹与文档列表相关类型
 export interface FolderItem {
   id: number;
   name: string;

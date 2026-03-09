@@ -1,4 +1,4 @@
-# 16-dashboard-radix-interactions
+﻿# 16-dashboard-radix-interactions
 
 ## 本次任务做了什么
 本轮继续推进 Dashboard 的交互基座重构：把首页文件夹 / 文档项右侧的三点菜单切换为 Radix DropdownMenu，把删除确认弹层切换为 Radix AlertDialog，并把创建、修改、删除三类操作的反馈统一接入全站顶部 `Toaster`。同时修复了 `Toast.tsx` 中已经写进源码的中文乱码注释，并按历史与备份内容把 `AGENTS.md` 的最新 UI 规范补回到正确中文。

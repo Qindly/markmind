@@ -1,4 +1,4 @@
-// router.go - 负责初始化 API 路由与中间件
+﻿// router.go - 负责初始化 API 路由与中间件
 package handler
 
 import (
@@ -14,6 +14,7 @@ import (
 // 参数 cfg: 服务端运行配置。
 // 参数 authHandler: 鉴权处理器。
 // 参数 dashboardHandler: 首页业务处理器。
+// 参数 documentHandler: 文档详情与正文编辑处理器。
 // 参数 authMiddleware: 鉴权中间件。
 // 参数 rateLimitMiddleware: 限流中间件。
 // 返回值为配置完成的 Gin 引擎与可能出现的错误。
@@ -21,6 +22,7 @@ func NewRouter(
 	cfg config.Config,
 	authHandler *AuthHandler,
 	dashboardHandler *DashboardHandler,
+	documentHandler *DocumentHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimitMiddleware *middleware.RateLimitMiddleware,
 ) (*gin.Engine, error) {
@@ -44,7 +46,9 @@ func NewRouter(
 		protected.PUT("/folders/:id", dashboardHandler.UpdateFolder)
 		protected.DELETE("/folders/:id", dashboardHandler.DeleteFolder)
 		protected.POST("/documents", dashboardHandler.CreateDocument)
+		protected.GET("/documents/:id", documentHandler.GetDocumentDetail)
 		protected.PUT("/documents/:id", dashboardHandler.UpdateDocument)
+		protected.PUT("/documents/:id/content", documentHandler.UpdateDocumentContent)
 		protected.DELETE("/documents/:id", dashboardHandler.DeleteDocument)
 	}
 

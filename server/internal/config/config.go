@@ -1,4 +1,4 @@
-// config.go - 负责加载并校验服务端运行配置
+﻿// config.go - 负责加载并校验服务端运行配置
 package config
 
 import (

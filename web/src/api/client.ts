@@ -1,4 +1,4 @@
-// client.ts - 封装带鉴权与自动刷新能力的 axios 实例
+﻿// client.ts - 封装带鉴权与自动刷新能力的 axios 实例
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 
 import { useAuthStore } from '../stores/authStore';

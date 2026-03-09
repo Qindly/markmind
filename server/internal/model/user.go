@@ -1,4 +1,4 @@
-// user.go - 定义 users 表对应的数据模型
+﻿// user.go - 定义 users 表对应的数据模型
 package model
 
 import "time"

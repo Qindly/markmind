@@ -1,4 +1,4 @@
-// Eyebrow.tsx - 提供小型辅助标题文本组件
+﻿// Eyebrow.tsx - 提供小型辅助标题文本组件
 import type { HTMLAttributes } from 'react';
 
 import { cn } from '../../lib/cn';

@@ -1,4 +1,4 @@
-// useAuthBootstrap.ts - 负责在应用启动时恢复登录态
+﻿// useAuthBootstrap.ts - 负责在应用启动时恢复登录态
 import { useEffect } from 'react';
 
 import { fetchCurrentUser, refreshSession } from '../api/auth';

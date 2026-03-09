@@ -1,4 +1,4 @@
-// DocumentListItem.tsx - 渲染右侧文档列表中的单个文档条目
+﻿// DocumentListItem.tsx - 渲染右侧文档列表中的单个文档条目
 import { cn } from '../../../lib/cn';
 import type { DocumentItem } from '../../../types/dashboard';
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';

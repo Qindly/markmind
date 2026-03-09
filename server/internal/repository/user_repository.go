@@ -1,4 +1,4 @@
-// user_repository.go - 封装用户相关的 PostgreSQL 操作
+﻿// user_repository.go - 封装用户相关的 PostgreSQL 操作
 package repository
 
 import (

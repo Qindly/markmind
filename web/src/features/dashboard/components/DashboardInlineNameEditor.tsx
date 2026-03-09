@@ -1,4 +1,4 @@
-// DashboardInlineNameEditor.tsx - 提供首页列表项的行内重命名表单
+﻿// DashboardInlineNameEditor.tsx - 提供首页列表项的行内重命名表单
 import type { FormEvent, KeyboardEvent } from 'react';
 
 import { Button } from '../../../components/ui/Button';

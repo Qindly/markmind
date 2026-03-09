@@ -1,4 +1,4 @@
-// dashboard_handler.go - 处理首页列表与文件夹/文档管理请求
+﻿// dashboard_handler.go - 处理首页列表与文件夹/文档管理请求
 package handler
 
 import (

@@ -1,4 +1,4 @@
-/* globals.css - 定义全局配色变量、Toast 动画与基础排版 */
+﻿/* globals.css - 定义全局配色变量、Toast 动画与基础排版 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

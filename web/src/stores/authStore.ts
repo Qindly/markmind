@@ -1,4 +1,4 @@
-// authStore.ts - 管理鉴权状态与 Access Token 持久化
+﻿// authStore.ts - 管理鉴权状态与 Access Token 持久化
 import { create } from 'zustand';
 
 import type { AuthUser } from '../types/auth';

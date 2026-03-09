@@ -1,4 +1,4 @@
-// AuthLayout.tsx - 提供登录注册页面共用的布局骨架
+﻿// AuthLayout.tsx - 提供登录注册页面共用的布局骨架
 import type { PropsWithChildren, ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';

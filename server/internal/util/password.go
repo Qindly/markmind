@@ -1,4 +1,4 @@
-// password.go - 封装密码哈希与比对逻辑
+﻿// password.go - 封装密码哈希与比对逻辑
 package util
 
 import (

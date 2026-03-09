@@ -1,4 +1,4 @@
-// redis.go - 负责初始化 Redis 客户端
+﻿// redis.go - 负责初始化 Redis 客户端
 package repository
 
 import (

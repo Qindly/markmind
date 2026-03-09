@@ -1,4 +1,4 @@
-// useDashboardHome.ts - 封装首页列表页的数据加载、删改与创建交互状态
+﻿// useDashboardHome.ts - 封装首页列表页的数据加载、删改与创建交互状态
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -164,6 +164,7 @@ export function useDashboardHome() {
       setMenuState(null);
       setEditingState(null);
       toast({ description: `已创建文档「${response.document.title}」` });
+      navigate(`/documents/${response.document.id}/edit`);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建空文档失败，请稍后重试'));
     } finally {
@@ -181,6 +182,7 @@ export function useDashboardHome() {
   function handleSelectDocument(documentId: number) {
     setSelectedDocumentId(documentId);
     setMenuState(null);
+    navigate(`/documents/${documentId}/edit`);
   }
 
   function handleOpenFolderMenu(folderId: number) {

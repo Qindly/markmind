@@ -1,4 +1,4 @@
-// useToast.ts - 提供全站顶部消息的状态管理与触发方法
+﻿// useToast.ts - 提供全站顶部消息的状态管理与触发方法
 import * as React from 'react';
 
 import type { ToastProps } from '../components/ui/Toast';

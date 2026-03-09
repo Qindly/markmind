@@ -1,4 +1,4 @@
-// auth.go - 定义鉴权与首页模块共用的业务错误码和错误变量
+﻿// auth.go - 定义鉴权与首页模块共用的业务错误码和错误变量
 package appconst
 
 import "errors"
