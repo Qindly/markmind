@@ -4,7 +4,13 @@ import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentItem } from '../../../types/dashboard';
+import { useVirtualListWindow } from '../useVirtualListWindow';
 import { DocumentListItem } from './DocumentListItem';
+
+const DOCUMENT_LIST_VIRTUAL_THRESHOLD = 40;
+const DOCUMENT_LIST_ITEM_HEIGHT = 96;
+const DOCUMENT_LIST_ITEM_GAP = 12;
+const DOCUMENT_LIST_ROW_HEIGHT = DOCUMENT_LIST_ITEM_HEIGHT + DOCUMENT_LIST_ITEM_GAP;
 
 export interface DocumentListPanelProps {
   currentFolderName: string;
@@ -25,6 +31,14 @@ export interface DocumentListPanelProps {
   onChangeEditingValue: (value: string) => void;
   onSubmitEditing: () => Promise<void>;
   onCancelEditing: () => void;
+}
+
+function getDocumentListHeight(itemCount: number): number {
+  if (itemCount === 0) {
+    return 0;
+  }
+
+  return itemCount * DOCUMENT_LIST_ITEM_HEIGHT + (itemCount - 1) * DOCUMENT_LIST_ITEM_GAP;
 }
 
 /**
@@ -52,6 +66,50 @@ export function DocumentListPanel({
   onSubmitEditing,
   onCancelEditing,
 }: DocumentListPanelProps) {
+  const isVirtualListEnabled = !isLoading && editingDocumentId === null && documents.length > DOCUMENT_LIST_VIRTUAL_THRESHOLD;
+  const { containerRef, startIndex, endIndex } = useVirtualListWindow({
+    enabled: isVirtualListEnabled,
+    itemCount: documents.length,
+    rowHeight: DOCUMENT_LIST_ROW_HEIGHT,
+  });
+  const renderedDocuments = isVirtualListEnabled ? documents.slice(startIndex, endIndex) : documents;
+  const totalHeight = getDocumentListHeight(documents.length);
+  const renderedHeight = getDocumentListHeight(renderedDocuments.length);
+  const listPaddingStyle = isVirtualListEnabled
+    ? {
+        paddingTop: startIndex * DOCUMENT_LIST_ROW_HEIGHT,
+        paddingBottom: Math.max(0, totalHeight - startIndex * DOCUMENT_LIST_ROW_HEIGHT - renderedHeight),
+      }
+    : undefined;
+
+  function renderDocumentItem(document: DocumentItem) {
+    return (
+      <DocumentListItem
+        document={document}
+        editingValue={editingValue}
+        isEditing={editingDocumentId === document.id}
+        isMenuOpen={documentMenuId === document.id}
+        isSaving={isUpdatingDocument && editingDocumentId === document.id}
+        isSelected={selectedDocumentId === document.id}
+        key={document.id}
+        onCancelEdit={onCancelEditing}
+        onDelete={() => onRequestDeleteDocument(document)}
+        onEditValueChange={onChangeEditingValue}
+        onMenuOpenChange={(open) => {
+          if (open) {
+            onOpenDocumentMenu(document.id);
+            return;
+          }
+
+          onCloseDocumentMenu(document.id);
+        }}
+        onSelect={() => onSelectDocument(document.id)}
+        onStartEdit={() => onStartDocumentEditing(document)}
+        onSubmitEdit={onSubmitEditing}
+      />
+    );
+  }
+
   return (
     <Card className="flex min-h-[720px] flex-1 flex-col">
       <CardHeader className="border-b border-[var(--color-border-soft)] p-6 pb-5">
@@ -67,7 +125,7 @@ export function DocumentListPanel({
         />
       </CardHeader>
 
-      <CardContent className="flex-1 space-y-3 overflow-y-auto p-6 pt-6">
+      <CardContent className="flex-1 overflow-y-auto p-6 pt-6" ref={containerRef}>
         {isLoading ? (
           <EmptyState description="正在加载你的文档列表..." />
         ) : null}
@@ -76,33 +134,11 @@ export function DocumentListPanel({
           <EmptyState description="这个目录还没有文档，试试创建第一篇空文档吧。" title="还没有文档" />
         ) : null}
 
-        {!isLoading
-          ? documents.map((document) => (
-              <DocumentListItem
-                document={document}
-                editingValue={editingValue}
-                isEditing={editingDocumentId === document.id}
-                isMenuOpen={documentMenuId === document.id}
-                isSaving={isUpdatingDocument && editingDocumentId === document.id}
-                isSelected={selectedDocumentId === document.id}
-                key={document.id}
-                onCancelEdit={onCancelEditing}
-                onDelete={() => onRequestDeleteDocument(document)}
-                onEditValueChange={onChangeEditingValue}
-                onMenuOpenChange={(open) => {
-                  if (open) {
-                    onOpenDocumentMenu(document.id);
-                    return;
-                  }
-
-                  onCloseDocumentMenu(document.id);
-                }}
-                onSelect={() => onSelectDocument(document.id)}
-                onStartEdit={() => onStartDocumentEditing(document)}
-                onSubmitEdit={onSubmitEditing}
-              />
-            ))
-          : null}
+        {!isLoading && documents.length > 0 ? (
+          <div className="space-y-3" style={listPaddingStyle}>
+            {renderedDocuments.map(renderDocumentItem)}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

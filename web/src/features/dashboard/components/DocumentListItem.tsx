@@ -80,21 +80,22 @@ export function DocumentListItem({
         />
       }
       actionClassName="pr-3 pt-4"
-      buttonClassName="px-5 py-4"
-      contentClassName="items-start"
+      buttonClassName="h-full px-5 py-4"
+      className="min-h-[96px]"
+      contentClassName="h-full items-start"
       isSelected={isSelected}
       onSelect={onSelect}
     >
       <div className="space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <span className="truncate text-base font-medium">{document.title}</span>
-            <span className={cn('text-xs', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
-              #{document.id}
-            </span>
-          </div>
-          <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
-            更新时间：{formatUpdatedAt(document.updated_at)}
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <span className="truncate text-base font-medium">{document.title}</span>
+          <span className={cn('text-xs', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
+            #{document.id}
+          </span>
+        </div>
+        <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
+          更新时间：{formatUpdatedAt(document.updated_at)}
+        </p>
       </div>
     </DashboardListItem>
   );
