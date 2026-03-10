@@ -56,7 +56,7 @@ export async function createDocument(payload: CreateDocumentRequest): Promise<Cr
   return data.data;
 }
 
-// updateDocument - 更新文档标题。
+// updateDocument - 更新文档标题或归类。
 // 参数 documentId: 文档 ID。
 // 参数 payload: 文档更新参数。
 // 返回值：更新后的文档数据。

@@ -147,7 +147,7 @@ func (handler *DashboardHandler) CreateDocument(ctx *gin.Context) {
 	WriteSuccess(ctx, http.StatusCreated, response)
 }
 
-// UpdateDocument - 修改当前用户的文档标题。
+// UpdateDocument - 修改当前用户的文档标题或归类。
 // 参数 ctx: Gin 请求上下文。
 func (handler *DashboardHandler) UpdateDocument(ctx *gin.Context) {
 	userID, exists := middleware.GetCurrentUserID(ctx)

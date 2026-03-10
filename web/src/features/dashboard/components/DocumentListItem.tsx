@@ -14,6 +14,7 @@ export interface DocumentListItemProps {
   isSaving: boolean;
   onSelect: () => void;
   onMenuOpenChange: (open: boolean) => void;
+  onMove: () => void;
   onStartEdit: () => void;
   onDelete: () => void;
   onEditValueChange: (value: string) => void;
@@ -49,6 +50,7 @@ export function DocumentListItem({
   isSaving,
   onSelect,
   onMenuOpenChange,
+  onMove,
   onStartEdit,
   onDelete,
   onEditValueChange,
@@ -76,6 +78,7 @@ export function DocumentListItem({
           isSelected={isSelected}
           onDelete={onDelete}
           onEdit={onStartEdit}
+          onMove={onMove}
           onOpenChange={onMenuOpenChange}
         />
       }

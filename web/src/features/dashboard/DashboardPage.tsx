@@ -1,6 +1,7 @@
 ﻿// DashboardPage.tsx - 渲染登录后的首页文档列表与目录管理入口
 import { Alert, AlertDescription } from '../../components/ui/Alert';
 import { DashboardDeleteDialog } from './components/DashboardDeleteDialog';
+import { DashboardMoveDocumentDialog } from './components/DashboardMoveDocumentDialog';
 import { DocumentListPanel } from './components/DocumentListPanel';
 import { FolderSidebar } from './components/FolderSidebar';
 import { useDashboardHome } from './useDashboardHome';
@@ -62,6 +63,7 @@ export function DashboardPage() {
               onCloseDocumentMenu={dashboard.handleCloseDocumentMenu}
               onCreateDocument={dashboard.handleCreateDocument}
               onOpenDocumentMenu={dashboard.handleOpenDocumentMenu}
+              onRequestMoveDocument={dashboard.handleRequestMoveDocument}
               onRequestDeleteDocument={dashboard.handleRequestDeleteDocument}
               onSelectDocument={dashboard.handleSelectDocument}
               onStartDocumentEditing={dashboard.handleStartDocumentEditing}
@@ -77,6 +79,13 @@ export function DashboardPage() {
         onCancel={dashboard.handleCancelDelete}
         onConfirm={dashboard.handleConfirmDelete}
         target={dashboard.deleteTarget}
+      />
+      <DashboardMoveDocumentDialog
+        folders={dashboard.folders}
+        isSubmitting={dashboard.isMovingDocument}
+        onCancel={dashboard.handleCancelMoveDocument}
+        onConfirm={dashboard.handleConfirmMoveDocument}
+        target={dashboard.moveTarget}
       />
     </>
   );

@@ -26,6 +26,7 @@ export interface DocumentListPanelProps {
   onSelectDocument: (documentId: number) => void;
   onOpenDocumentMenu: (documentId: number) => void;
   onCloseDocumentMenu: (documentId?: number) => void;
+  onRequestMoveDocument: (document: DocumentItem) => void;
   onStartDocumentEditing: (document: DocumentItem) => void;
   onRequestDeleteDocument: (document: DocumentItem) => void;
   onChangeEditingValue: (value: string) => void;
@@ -60,6 +61,7 @@ export function DocumentListPanel({
   onSelectDocument,
   onOpenDocumentMenu,
   onCloseDocumentMenu,
+  onRequestMoveDocument,
   onStartDocumentEditing,
   onRequestDeleteDocument,
   onChangeEditingValue,
@@ -103,6 +105,7 @@ export function DocumentListPanel({
 
           onCloseDocumentMenu(document.id);
         }}
+        onMove={() => onRequestMoveDocument(document)}
         onSelect={() => onSelectDocument(document.id)}
         onStartEdit={() => onStartDocumentEditing(document)}
         onSubmitEdit={onSubmitEditing}

@@ -171,12 +171,38 @@ func (service *dashboardService) UpdateDocument(ctx context.Context, userID int6
 		return nil, appconst.ErrInvalidParams
 	}
 
-	title := strings.TrimSpace(request.Title)
-	if title == "" {
-		return nil, appconst.ErrDocumentTitleRequired
+	if request.Title == nil && !request.FolderID.Set {
+		return nil, appconst.ErrInvalidParams
 	}
 
-	updatedDocument, err := service.documentRepository.UpdateDocumentTitleByIDAndUserID(ctx, documentID, userID, title)
+	var title *string
+	if request.Title != nil {
+		trimmedTitle := strings.TrimSpace(*request.Title)
+		if trimmedTitle == "" {
+			return nil, appconst.ErrDocumentTitleRequired
+		}
+
+		title = &trimmedTitle
+	}
+
+	if request.FolderID.Set && request.FolderID.Value != nil {
+		if *request.FolderID.Value <= 0 {
+			return nil, appconst.ErrInvalidParams
+		}
+
+		if _, err := service.folderRepository.FindFolderByIDAndUserID(ctx, *request.FolderID.Value, userID); err != nil {
+			return nil, err
+		}
+	}
+
+	updatedDocument, err := service.documentRepository.UpdateDocumentMetaByIDAndUserID(
+		ctx,
+		documentID,
+		userID,
+		title,
+		request.FolderID.Set,
+		request.FolderID.Value,
+	)
 	if err != nil {
 		return nil, err
 	}

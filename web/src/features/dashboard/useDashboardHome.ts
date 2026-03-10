@@ -36,6 +36,12 @@ interface DashboardDeleteState {
   name: string;
 }
 
+interface DashboardMoveState {
+  id: number;
+  title: string;
+  folderId: number | null;
+}
+
 function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
   return [...documents].sort((left, right) => {
     const timeDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
@@ -45,6 +51,20 @@ function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
 
     return right.id - left.id;
   });
+}
+
+function applyUpdatedDocument(documents: DocumentItem[], updatedDocument: DocumentItem): DocumentItem[] {
+  return sortDocuments(
+    documents.map((document) => (document.id === updatedDocument.id ? updatedDocument : document)),
+  );
+}
+
+function getFolderDisplayName(folders: FolderItem[], folderId: number | null): string {
+  if (folderId === null) {
+    return '根目录';
+  }
+
+  return folders.find((folder) => folder.id === folderId)?.name ?? '未知目录';
 }
 
 /**
@@ -67,10 +87,12 @@ export function useDashboardHome() {
   const [menuState, setMenuState] = useState<DashboardMenuState | null>(null);
   const [editingState, setEditingState] = useState<DashboardEditingState | null>(null);
   const [deleteState, setDeleteState] = useState<DashboardDeleteState | null>(null);
+  const [moveState, setMoveState] = useState<DashboardMoveState | null>(null);
   const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
   const [isUpdatingDocument, setIsUpdatingDocument] = useState(false);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
+  const [isMovingDocument, setIsMovingDocument] = useState(false);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
@@ -163,6 +185,7 @@ export function useDashboardHome() {
       setSelectedDocumentId(response.document.id);
       setMenuState(null);
       setEditingState(null);
+      setMoveState(null);
       toast({ description: `已创建文档「${response.document.title}」` });
       navigate(`/documents/${response.document.id}/edit`);
     } catch (error) {
@@ -277,9 +300,7 @@ export function useDashboardHome() {
 
     try {
       const response = await updateDocument(editingState.id, { title: editingState.value });
-      setDocuments((currentDocuments) =>
-        sortDocuments(currentDocuments.map((document) => (document.id === response.document.id ? response.document : document))),
-      );
+      setDocuments((currentDocuments) => applyUpdatedDocument(currentDocuments, response.document));
       setEditingState(null);
       toast({ description: `已重命名文档为「${response.document.title}」` });
     } catch (error) {
@@ -299,8 +320,47 @@ export function useDashboardHome() {
     setDeleteState({ type: 'document', id: document.id, name: document.title });
   }
 
+  function handleRequestMoveDocument(document: DocumentItem) {
+    setMenuState(null);
+    setMoveState({
+      id: document.id,
+      title: document.title,
+      folderId: document.folder_id,
+    });
+  }
+
+  function handleCancelMoveDocument() {
+    setMoveState(null);
+  }
+
   function handleCancelDelete() {
     setDeleteState(null);
+  }
+
+  async function handleConfirmMoveDocument(folderId: number | null) {
+    const target = moveState;
+    if (!target) {
+      return;
+    }
+
+    setErrorMessage('');
+    setIsMovingDocument(true);
+
+    try {
+      const response = await updateDocument(target.id, { folder_id: folderId });
+      setDocuments((currentDocuments) => applyUpdatedDocument(currentDocuments, response.document));
+      if (selectedDocumentId === target.id && response.document.folder_id !== selectedFolderId) {
+        setSelectedDocumentId(null);
+      }
+      setMoveState(null);
+      toast({
+        description: `已将文档「${response.document.title}」移动到「${getFolderDisplayName(folders, response.document.folder_id)}」`,
+      });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '移动文档失败，请稍后重试'));
+    } finally {
+      setIsMovingDocument(false);
+    }
   }
 
   async function handleConfirmDelete() {
@@ -365,12 +425,14 @@ export function useDashboardHome() {
     isUpdatingDocument,
     isDeletingFolder,
     isDeletingDocument,
+    isMovingDocument,
     folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
     documentMenuId: menuState?.type === 'document' ? menuState.id : null,
     editingFolderId: editingState?.type === 'folder' ? editingState.id : null,
     editingDocumentId: editingState?.type === 'document' ? editingState.id : null,
     editingValue: editingState?.value ?? '',
     deleteTarget: deleteState,
+    moveTarget: moveState,
     handleLogout,
     handleCreateFolder,
     handleCreateDocument,
@@ -385,9 +447,12 @@ export function useDashboardHome() {
     handleChangeEditingValue,
     handleSubmitEditing,
     handleCancelEditing,
+    handleRequestMoveDocument,
     handleRequestDeleteFolder,
     handleRequestDeleteDocument,
+    handleCancelMoveDocument,
     handleCancelDelete,
+    handleConfirmMoveDocument,
     handleConfirmDelete,
   };
 }

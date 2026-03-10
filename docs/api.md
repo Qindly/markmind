@@ -433,7 +433,7 @@
 }
 ```
 
-### 修改文档标题
+### 修改文档信息
 - **请求方式**：PUT
 - **路由**：`/api/v1/documents/:id`
 - **是否需要鉴权**：是
@@ -444,7 +444,10 @@
 |--------|------|------|------|------|
 | Authorization | header | string | 是 | `Bearer <access_token>` |
 | id | params | number | 是 | 文档 ID |
-| title | body(json) | string | 是 | 新的文档标题，长度 1~120 |
+| title | body(json) | string | 否 | 新的文档标题，长度 1~120 |
+| folder_id | body(json) | number \| null | 否 | 目标文件夹 ID；传 `null` 表示移回根目录 |
+
+- **补充说明**：`title` 与 `folder_id` 至少需要提供一项。
 
 #### 返回样例
 
@@ -456,8 +459,8 @@
   "data": {
     "document": {
       "id": 11,
-      "folder_id": 1,
-      "title": "新的文档标题",
+      "folder_id": 3,
+      "title": "React Hooks 速记",
       "created_at": "2026-03-08T12:10:00Z",
       "updated_at": "2026-03-08T13:10:00Z"
     }

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	appconst "github.com/Qindly/markmind/internal/const"
 	"github.com/Qindly/markmind/internal/model"
@@ -19,7 +20,7 @@ type DocumentRepository interface {
 	CreateDocument(ctx context.Context, document model.Document) (*model.Document, error)
 	CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error)
 	FindDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) (*model.Document, error)
-	UpdateDocumentTitleByIDAndUserID(ctx context.Context, documentID int64, userID int64, title string) (*model.Document, error)
+	UpdateDocumentMetaByIDAndUserID(ctx context.Context, documentID int64, userID int64, title *string, folderIDSet bool, folderID *int64) (*model.Document, error)
 	UpdateDocumentContentByIDAndUserID(ctx context.Context, documentID int64, userID int64, content string) (*model.Document, error)
 	DeleteDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) error
 }
@@ -117,21 +118,49 @@ func (repository *documentRepository) FindDocumentByIDAndUserID(ctx context.Cont
 	return document, nil
 }
 
-func (repository *documentRepository) UpdateDocumentTitleByIDAndUserID(ctx context.Context, documentID int64, userID int64, title string) (*model.Document, error) {
-	query := `
+func (repository *documentRepository) UpdateDocumentMetaByIDAndUserID(
+	ctx context.Context,
+	documentID int64,
+	userID int64,
+	title *string,
+	folderIDSet bool,
+	folderID *int64,
+) (*model.Document, error) {
+	setClauses := []string{"updated_at = NOW()"}
+	queryArgs := []any{documentID, userID}
+	nextArgIndex := 3
+
+	if title != nil {
+		setClauses = append(setClauses, fmt.Sprintf("title = $%d", nextArgIndex))
+		queryArgs = append(queryArgs, *title)
+		nextArgIndex++
+	}
+
+	if folderIDSet {
+		setClauses = append(setClauses, fmt.Sprintf("folder_id = $%d", nextArgIndex))
+
+		var folderValue any
+		if folderID != nil {
+			folderValue = *folderID
+		}
+
+		queryArgs = append(queryArgs, folderValue)
+	}
+
+	query := fmt.Sprintf(`
 		UPDATE documents
-		SET title = $3, updated_at = NOW()
+		SET %s
 		WHERE id = $1 AND user_id = $2
 		RETURNING id, user_id, folder_id, title, content, created_at, updated_at
-	`
+	`, strings.Join(setClauses, ", "))
 
-	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, documentID, userID, title))
+	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, queryArgs...))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, appconst.ErrDocumentNotFound
 		}
 
-		return nil, fmt.Errorf("更新文档失败: %w", err)
+		return nil, fmt.Errorf("更新文档元信息失败: %w", err)
 	}
 
 	return updatedDocument, nil

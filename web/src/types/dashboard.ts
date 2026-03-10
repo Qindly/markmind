@@ -49,7 +49,8 @@ export interface CreateDocumentResponseData {
 }
 
 export interface UpdateDocumentRequest {
-  title: string;
+  title?: string;
+  folder_id?: number | null;
 }
 
 export interface UpdateDocumentResponseData {

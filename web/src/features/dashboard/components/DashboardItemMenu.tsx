@@ -1,4 +1,4 @@
-// DashboardItemMenu.tsx - 提供首页列表项右侧的三点操作菜单
+﻿// DashboardItemMenu.tsx - 提供首页列表项右侧的三点操作菜单
 import type { MouseEvent } from 'react';
 
 import { MoreVertical } from 'lucide-react';
@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../../components/ui/DropdownMenu';
 import { cn } from '../../../lib/cn';
@@ -15,6 +16,7 @@ export interface DashboardItemMenuProps {
   isOpen: boolean;
   isSelected: boolean;
   onOpenChange: (open: boolean) => void;
+  onMove?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -28,6 +30,7 @@ export function DashboardItemMenu({
   isOpen,
   isSelected,
   onOpenChange,
+  onMove,
   onEdit,
   onDelete,
 }: DashboardItemMenuProps) {
@@ -37,6 +40,10 @@ export function DashboardItemMenu({
 
   function handleEdit() {
     onEdit();
+  }
+
+  function handleMove() {
+    onMove?.();
   }
 
   function handleDelete() {
@@ -60,7 +67,20 @@ export function DashboardItemMenu({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-28">
+      <DropdownMenuContent align="end" className="w-32">
+        {onMove ? (
+          <>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                handleMove();
+              }}
+            >
+              移动到...
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem
           onSelect={(event) => {
             event.preventDefault();
