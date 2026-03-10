@@ -1,12 +1,18 @@
 ﻿// useEditorToc.ts - 管理编辑页 TOC、页面滚动高亮与 URL hash 同步
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
-import { renderMarkdownPreview } from '../../lib/markdownPreview';
+import type { MarkdownHeading } from '../../lib/markdownPreview';
 import { buildEditorTocTree, type EditorTocNode } from './buildEditorTocTree';
 
 const PREVIEW_HEADING_SELECTOR = 'h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]';
 const ACTIVE_HEADING_TOP_OFFSET = 144;
 const SCROLL_TARGET_TOP_OFFSET = 16;
+
+export interface UseEditorTocOptions {
+  html: string;
+  headings: MarkdownHeading[];
+  hasContent: boolean;
+}
 
 export interface UseEditorTocResult {
   previewHtml: string;
@@ -84,34 +90,27 @@ function resolveViewportActiveHeadingId(headingElements: HTMLElement[]): string 
 
 /**
  * useEditorToc - 负责目录树生成、折叠状态、滚动高亮与 hash 同步。
- * 参数 content: 当前编辑器中的 Markdown 正文。
+ * 参数 options: 当前预览 HTML、标题列表与是否有正文内容。
  * 返回值：预览 HTML、TOC 树、激活标题、折叠状态与交互回调。
  */
-export function useEditorToc(content: string): UseEditorTocResult {
-  const preview = useMemo(() => {
-    if (!content.trim()) {
-      return {
-        html: '',
-        headings: [],
-      };
-    }
-
-    return renderMarkdownPreview(content);
-  }, [content]);
-
+export function useEditorToc({
+  html,
+  headings,
+  hasContent,
+}: UseEditorTocOptions): UseEditorTocResult {
   const headingIdKey = useMemo(
-    () => preview.headings.map((heading) => heading.id).join('|'),
-    [preview.headings],
+    () => headings.map((heading) => heading.id).join('|'),
+    [headings],
   );
 
   const headingIdSet = useMemo(
-    () => new Set(preview.headings.map((heading) => heading.id)),
-    [preview.headings],
+    () => new Set(headings.map((heading) => heading.id)),
+    [headings],
   );
 
   const { tree: tocTree, ancestorMap, expandableIds } = useMemo(
-    () => buildEditorTocTree(preview.headings),
-    [preview.headings],
+    () => buildEditorTocTree(headings),
+    [headings],
   );
 
   const expandableIdKey = useMemo(() => expandableIds.join('|'), [expandableIds]);
@@ -232,7 +231,7 @@ export function useEditorToc(content: string): UseEditorTocResult {
   }, [expandableIdKey, expandableIds]);
 
   useEffect(() => {
-    if (preview.headings.length === 0) {
+    if (headings.length === 0) {
       lastAppliedHashSignatureRef.current = '';
       setActiveHeading(null, { syncHash: false });
       return;
@@ -246,16 +245,16 @@ export function useEditorToc(content: string): UseEditorTocResult {
       ? activeHeadingId
       : hasHashHeading
         ? hashHeadingId
-        : preview.headings[0].id;
+        : headings[0].id;
 
     setActiveHeading(nextActiveHeadingId, {
       syncHash: !hasHashHeading,
       expandAncestors: true,
     });
-  }, [activeHeadingId, headingIdKey, headingIdSet, preview.headings, setActiveHeading]);
+  }, [activeHeadingId, headingIdKey, headingIdSet, headings, setActiveHeading]);
 
   useEffect(() => {
-    if (preview.headings.length === 0) {
+    if (headings.length === 0) {
       return;
     }
 
@@ -276,10 +275,10 @@ export function useEditorToc(content: string): UseEditorTocResult {
         expandAncestors: true,
       });
     }
-  }, [headingIdKey, headingIdSet, preview.html, preview.headings.length, scrollToHeading, setActiveHeading]);
+  }, [headingIdKey, headingIdSet, headings.length, html, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
-    if (preview.headings.length === 0) {
+    if (headings.length === 0) {
       return undefined;
     }
 
@@ -303,10 +302,10 @@ export function useEditorToc(content: string): UseEditorTocResult {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [headingIdKey, headingIdSet, preview.headings.length, scrollToHeading, setActiveHeading]);
+  }, [headingIdKey, headingIdSet, headings.length, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
-    if (preview.headings.length === 0) {
+    if (headings.length === 0) {
       return undefined;
     }
 
@@ -339,11 +338,11 @@ export function useEditorToc(content: string): UseEditorTocResult {
       window.removeEventListener('scroll', syncActiveHeadingFromViewport);
       window.removeEventListener('resize', syncActiveHeadingFromViewport);
     };
-  }, [headingIdKey, preview.html, preview.headings.length, setActiveHeading]);
+  }, [headingIdKey, headings.length, html, setActiveHeading]);
 
   return {
-    previewHtml: preview.html,
-    hasPreviewContent: Boolean(content.trim()),
+    previewHtml: html,
+    hasPreviewContent: hasContent,
     tocTree,
     activeHeadingId,
     expandedState,

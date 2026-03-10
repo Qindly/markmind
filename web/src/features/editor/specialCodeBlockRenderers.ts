@@ -1,19 +1,25 @@
-﻿// specialCodeBlockRenderers.ts - 管理编辑器预览区特殊代码块的渲染器注册与分发配置
-import { mountEChartsChart, parseEChartsOption } from '../../lib/echarts';
-import { renderMermaidSvg } from '../../lib/mermaid';
+﻿// specialCodeBlockRenderers.ts - 管理编辑器预览区特殊代码块的渲染器注册、按需加载与分发配置
 
 export interface SpecialCodeBlockRenderContext {
   source: string;
   viewportElement: HTMLDivElement;
 }
 
+export interface LoadedSpecialCodeBlockRenderer {
+  render: (context: SpecialCodeBlockRenderContext) => Promise<void | (() => void)>;
+}
+
 export interface SpecialCodeBlockRenderer {
   language: string;
   displayName: string;
+  loadingMessage: string;
   emptyMessage: string;
-  render: (context: SpecialCodeBlockRenderContext) => Promise<void | (() => void)>;
+  load: () => Promise<LoadedSpecialCodeBlockRenderer>;
   getErrorMessage: (error: unknown) => string;
 }
+
+let mermaidRendererPromise: Promise<LoadedSpecialCodeBlockRenderer> | null = null;
+let echartsRendererPromise: Promise<LoadedSpecialCodeBlockRenderer> | null = null;
 
 // getDefaultErrorMessage - 为特殊代码块渲染失败提供统一兜底提示。
 // 参数 error: 渲染过程中抛出的异常对象。
@@ -27,39 +33,45 @@ function getDefaultErrorMessage(error: unknown, fallbackMessage: string): string
   return fallbackMessage;
 }
 
-// renderMermaidBlock - 将 Mermaid 文本渲染到指定视口容器中。
-// 参数 context: 当前代码块源码和渲染容器。
-async function renderMermaidBlock({
-  source,
-  viewportElement,
-}: SpecialCodeBlockRenderContext): Promise<void> {
-  viewportElement.innerHTML = await renderMermaidSvg(source);
+// loadMermaidRenderer - 按需加载 Mermaid 代码块渲染器模块。
+// 返回值：包含 Mermaid 渲染函数的运行时对象。
+function loadMermaidRenderer(): Promise<LoadedSpecialCodeBlockRenderer> {
+  if (!mermaidRendererPromise) {
+    mermaidRendererPromise = import('./renderers/renderMermaidSpecialCodeBlock').then((module) => ({
+      render: module.renderMermaidSpecialCodeBlock,
+    }));
+  }
+
+  return mermaidRendererPromise;
 }
 
-// renderEChartsBlock - 将 ECharts option 对象渲染到指定图表容器中。
-// 参数 context: 当前代码块源码和渲染容器。
-// 返回值：用于销毁图表实例的清理函数。
-async function renderEChartsBlock({
-  source,
-  viewportElement,
-}: SpecialCodeBlockRenderContext): Promise<() => void> {
-  const option = parseEChartsOption(source);
-  return mountEChartsChart(viewportElement, option);
+// loadEChartsRenderer - 按需加载 ECharts 代码块渲染器模块。
+// 返回值：包含 ECharts 渲染函数的运行时对象。
+function loadEChartsRenderer(): Promise<LoadedSpecialCodeBlockRenderer> {
+  if (!echartsRendererPromise) {
+    echartsRendererPromise = import('./renderers/renderEChartsSpecialCodeBlock').then((module) => ({
+      render: module.renderEChartsSpecialCodeBlock,
+    }));
+  }
+
+  return echartsRendererPromise;
 }
 
 export const specialCodeBlockRenderers: SpecialCodeBlockRenderer[] = [
   {
     language: 'mermaid',
     displayName: 'Mermaid',
+    loadingMessage: '正在加载 Mermaid 渲染器...',
     emptyMessage: '请填写 Mermaid 图表内容。',
-    render: renderMermaidBlock,
+    load: loadMermaidRenderer,
     getErrorMessage: (error) => getDefaultErrorMessage(error, '请检查当前 Mermaid 语法是否完整。'),
   },
   {
     language: 'echarts',
     displayName: 'ECharts',
+    loadingMessage: '正在加载 ECharts 渲染器...',
     emptyMessage: '请编写 `{}`、`option = {}` 或 `const option = {}`。',
-    render: renderEChartsBlock,
+    load: loadEChartsRenderer,
     getErrorMessage: (error) =>
       getDefaultErrorMessage(
         error,

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentDetail, DocumentSavePhase } from '../../../types/document';
 import { formatEditorDateTime } from '../formatEditorDateTime';
+import { useMarkdownPreview } from '../useMarkdownPreview';
 import { useEditorToc } from '../useEditorToc';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EditorInfoPanel } from './EditorInfoPanel';
@@ -40,7 +41,12 @@ export function EditorWorkspace({
   onImagePaste,
   onSave,
 }: EditorWorkspaceProps) {
-  const editorToc = useEditorToc(content);
+  const markdownPreview = useMarkdownPreview(content);
+  const editorToc = useEditorToc({
+    html: markdownPreview.html,
+    headings: markdownPreview.headings,
+    hasContent: markdownPreview.hasContent,
+  });
   const isUploadingImages = uploadingImageCount > 0;
   return (
     <main className="min-h-screen px-3 py-4 text-[var(--color-text-primary)] sm:px-4 sm:py-5">
@@ -127,12 +133,14 @@ export function EditorWorkspace({
                 <div className="space-y-1">
                   <h2 className="text-sm font-medium text-[var(--color-text-primary)]">实时预览</h2>
                   <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-                    基于 unified 管线实时渲染标题、列表、公式、安全 HTML、Mermaid、ECharts 与上传后的图片内容。
+                    基于 unified 管线按需生成标题、列表、公式、安全 HTML，并延迟加载 Mermaid、ECharts 与上传后的图片内容。
                   </p>
                 </div>
                 <MarkdownPreview
+                  errorMessage={markdownPreview.errorMessage}
                   hasContent={editorToc.hasPreviewContent}
                   html={editorToc.previewHtml}
+                  isRendering={markdownPreview.isRendering}
                   previewContainerRef={editorToc.previewContainerRef}
                 />
               </section>

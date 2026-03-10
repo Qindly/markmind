@@ -38,6 +38,16 @@ function createSpecialBlockElement(language: string) {
   };
 }
 
+// setSpecialBlockLoadingState - 为特殊代码块容器写入加载中的占位内容。
+// 参数 viewportElement: 当前渲染容器内部的视口节点。
+// 参数 message: 需要展示的加载文案。
+function setSpecialBlockLoadingState(viewportElement: HTMLDivElement, message: string) {
+  const loadingElement = document.createElement('div');
+  loadingElement.className = 'markmind-special-loading';
+  loadingElement.textContent = message;
+  viewportElement.replaceChildren(loadingElement);
+}
+
 // createSpecialBlockErrorNotice - 构造特殊代码块渲染失败提示节点。
 // 参数 displayName: 当前渲染器对应的展示名称。
 // 参数 message: 需要展示给用户的错误信息。
@@ -65,9 +75,7 @@ export function useSpecialCodeBlockPreview({
       return;
     }
 
-    const codeBlockElements = Array.from(
-      previewContainer.querySelectorAll<HTMLElement>(CODE_BLOCK_SELECTOR),
-    );
+    const codeBlockElements = Array.from(previewContainer.querySelectorAll<HTMLElement>(CODE_BLOCK_SELECTOR));
     if (codeBlockElements.length === 0) {
       return;
     }
@@ -94,30 +102,38 @@ export function useSpecialCodeBlockPreview({
         return;
       }
 
+      const fallbackPreElement = preElement.cloneNode(true) as HTMLPreElement;
+      const { blockElement, viewportElement } = createSpecialBlockElement(language);
+      setSpecialBlockLoadingState(viewportElement, renderer.loadingMessage);
+      preElement.replaceWith(blockElement);
+
       try {
-        const { blockElement, viewportElement } = createSpecialBlockElement(language);
-        const cleanup = await renderer.render({
+        const loadedRenderer = await renderer.load();
+        if (isDisposed || !blockElement.isConnected) {
+          return;
+        }
+
+        const cleanup = await loadedRenderer.render({
           source,
           viewportElement,
         });
 
-        if (isDisposed || !preElement.isConnected) {
+        if (isDisposed || !blockElement.isConnected) {
           cleanup?.();
           return;
         }
 
-        preElement.replaceWith(blockElement);
         if (cleanup) {
           cleanupList.push(cleanup);
         }
       } catch (error) {
-        if (isDisposed || !preElement.isConnected) {
+        if (isDisposed || !blockElement.isConnected) {
           return;
         }
 
-        preElement.classList.add('markmind-special-fallback');
-        preElement.before(
+        blockElement.replaceWith(
           createSpecialBlockErrorNotice(renderer.displayName, renderer.getErrorMessage(error)),
+          fallbackPreElement,
         );
       }
     }

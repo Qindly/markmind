@@ -442,6 +442,18 @@ textarea {
   width: 100%;
 }
 
+.markdown-preview .markmind-special-loading {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 0.9rem;
+  background: rgba(250, 249, 245, 0.72);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
 .markdown-preview .markmind-special-viewport-mermaid {
   min-width: max-content;
 }
