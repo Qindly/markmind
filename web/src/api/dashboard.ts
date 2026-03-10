@@ -10,6 +10,8 @@ import type {
   DashboardData,
   DeleteDocumentResponseData,
   DeleteFolderResponseData,
+  SearchDocumentsRequest,
+  SearchDocumentsResponseData,
   UpdateDocumentRequest,
   UpdateDocumentResponseData,
   UpdateFolderRequest,
@@ -20,6 +22,20 @@ import type {
 // 返回值：首页展示数据。
 export async function fetchDashboard(): Promise<DashboardData> {
   const { data } = await apiClient.get<ApiResponse<DashboardData>>('/dashboard');
+  return data.data;
+}
+
+// searchDocuments - 搜索当前目录标题或正文命中的文档。
+// 参数 payload: 搜索关键字与当前目录。
+// 返回值：匹配到的文档摘要列表。
+export async function searchDocuments(payload: SearchDocumentsRequest): Promise<SearchDocumentsResponseData> {
+  const { data } = await apiClient.get<ApiResponse<SearchDocumentsResponseData>>('/documents/search', {
+    params: {
+      keyword: payload.keyword,
+      ...(payload.folder_id === undefined || payload.folder_id === null ? {} : { folder_id: payload.folder_id }),
+    },
+  });
+
   return data.data;
 }
 

@@ -4,6 +4,7 @@ import { Input } from '../../../components/ui/Input';
 
 export interface DocumentListToolbarProps {
   searchKeyword: string;
+  isSearchingDocuments: boolean;
   isCreatingDocument: boolean;
   onChangeSearchKeyword: (value: string) => void;
   onClearSearch: () => void;
@@ -17,6 +18,7 @@ export interface DocumentListToolbarProps {
  */
 export function DocumentListToolbar({
   searchKeyword,
+  isSearchingDocuments,
   isCreatingDocument,
   onChangeSearchKeyword,
   onClearSearch,
@@ -29,9 +31,10 @@ export function DocumentListToolbar({
       <Input
         className="w-full sm:w-72"
         onChange={(event) => onChangeSearchKeyword(event.target.value)}
-        placeholder="搜索当前目录中的文档标题"
+        placeholder="搜索当前目录中的标题或正文"
         value={searchKeyword}
       />
+      {isSearchingDocuments ? <span className="text-sm text-[var(--color-text-secondary)]">搜索中...</span> : null}
       {hasSearchKeyword ? (
         <Button className="h-10 w-full px-4 sm:w-auto" onClick={onClearSearch} type="button" variant="secondary">
           清空搜索

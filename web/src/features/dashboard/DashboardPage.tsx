@@ -57,6 +57,7 @@ export function DashboardPage() {
               editingValue={dashboard.editingValue}
               isCreatingDocument={dashboard.isCreatingDocument}
               isLoading={dashboard.isLoading}
+              isSearchingDocuments={dashboard.isSearchingDocuments}
               isUpdatingDocument={dashboard.isUpdatingDocument}
               onCancelEditing={dashboard.handleCancelEditing}
               onChangeEditingValue={dashboard.handleChangeEditingValue}
@@ -70,6 +71,7 @@ export function DashboardPage() {
               onSelectDocument={dashboard.handleSelectDocument}
               onStartDocumentEditing={dashboard.handleStartDocumentEditing}
               onSubmitEditing={dashboard.handleSubmitEditing}
+              searchErrorMessage={dashboard.searchErrorMessage}
               searchKeyword={dashboard.searchKeyword}
               selectedDocumentId={dashboard.selectedDocumentId}
               totalDocumentCount={dashboard.currentFolderDocumentCount}

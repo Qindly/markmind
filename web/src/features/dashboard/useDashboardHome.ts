@@ -9,6 +9,7 @@ import {
   deleteDocument,
   deleteFolder,
   fetchDashboard,
+  searchDocuments,
   updateDocument,
   updateFolder,
 } from '../../api/dashboard';
@@ -77,7 +78,9 @@ export function useDashboardHome() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [searchResults, setSearchResults] = useState<DocumentItem[] | null>(null);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchErrorMessage, setSearchErrorMessage] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -94,6 +97,7 @@ export function useDashboardHome() {
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
   const [isMovingDocument, setIsMovingDocument] = useState(false);
+  const [isSearchingDocuments, setIsSearchingDocuments] = useState(false);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
@@ -106,13 +110,8 @@ export function useDashboardHome() {
   );
 
   const filteredDocuments = useMemo(() => {
-    const normalizedKeyword = searchKeyword.trim().toLowerCase();
-    if (normalizedKeyword === '') {
-      return visibleDocuments;
-    }
-
-    return visibleDocuments.filter((document) => document.title.toLowerCase().includes(normalizedKeyword));
-  }, [searchKeyword, visibleDocuments]);
+    return searchKeyword.trim() === '' ? visibleDocuments : searchResults ?? [];
+  }, [searchKeyword, searchResults, visibleDocuments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +146,50 @@ export function useDashboardHome() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const normalizedKeyword = searchKeyword.trim();
+
+    async function runDocumentSearch() {
+      if (normalizedKeyword === '') {
+        setSearchResults(null);
+        setSearchErrorMessage('');
+        setIsSearchingDocuments(false);
+        return;
+      }
+
+      setIsSearchingDocuments(true);
+      setSearchResults(null);
+      setSearchErrorMessage('');
+
+      try {
+        const response = await searchDocuments({
+          keyword: normalizedKeyword,
+          folder_id: selectedFolderId,
+        });
+        if (cancelled) {
+          return;
+        }
+
+        setSearchResults(response.documents);
+      } catch (error) {
+        if (!cancelled) {
+          setSearchErrorMessage(getErrorMessage(error, '搜索文档失败，请稍后重试'));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearchingDocuments(false);
+        }
+      }
+    }
+
+    void runDocumentSearch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documents, searchKeyword, selectedFolderId]);
+
   async function handleLogout() {
     setErrorMessage('');
     setIsLoggingOut(true);
@@ -172,6 +215,8 @@ export function useDashboardHome() {
     try {
       const response = await createFolder({ name });
       setFolders((currentFolders) => [...currentFolders, response.folder]);
+      setSearchResults(null);
+      setSearchErrorMessage('');
       setSearchKeyword('');
       setSelectedFolderId(response.folder.id);
       setSelectedDocumentId(null);
@@ -188,6 +233,7 @@ export function useDashboardHome() {
 
   async function handleCreateDocument() {
     setErrorMessage('');
+    setSearchErrorMessage('');
     setIsCreatingDocument(true);
 
     try {
@@ -209,16 +255,21 @@ export function useDashboardHome() {
   function handleSelectFolder(folderId: number | null) {
     setSelectedFolderId(folderId);
     setSelectedDocumentId(null);
+    setSearchResults(null);
+    setSearchErrorMessage('');
     setSearchKeyword('');
     setMenuState(null);
     setEditingState(null);
   }
 
   function handleChangeSearchKeyword(value: string) {
+    setSearchErrorMessage('');
     setSearchKeyword(value);
   }
 
   function handleClearSearchKeyword() {
+    setSearchResults(null);
+    setSearchErrorMessage('');
     setSearchKeyword('');
   }
 
@@ -398,6 +449,8 @@ export function useDashboardHome() {
         await deleteFolder(target.id);
         setFolders((currentFolders) => currentFolders.filter((folder) => folder.id !== target.id));
         if (selectedFolderId === target.id) {
+          setSearchResults(null);
+          setSearchErrorMessage('');
           setSearchKeyword('');
           setSelectedFolderId(null);
           setSelectedDocumentId(null);
@@ -437,6 +490,7 @@ export function useDashboardHome() {
     filteredDocuments,
     currentFolderDocumentCount: visibleDocuments.length,
     searchKeyword,
+    searchErrorMessage,
     selectedFolderId,
     selectedFolderName: selectedFolder?.name ?? '根目录',
     selectedDocumentId,
@@ -450,6 +504,7 @@ export function useDashboardHome() {
     isDeletingFolder,
     isDeletingDocument,
     isMovingDocument,
+    isSearchingDocuments,
     folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
     documentMenuId: menuState?.type === 'document' ? menuState.id : null,
     editingFolderId: editingState?.type === 'folder' ? editingState.id : null,

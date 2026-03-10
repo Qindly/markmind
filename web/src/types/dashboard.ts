@@ -60,3 +60,12 @@ export interface UpdateDocumentResponseData {
 export interface DeleteDocumentResponseData {
   deleted_id: number;
 }
+
+export interface SearchDocumentsRequest {
+  keyword: string;
+  folder_id?: number | null;
+}
+
+export interface SearchDocumentsResponseData {
+  documents: DocumentItem[];
+}

@@ -27,3 +27,14 @@ type UpdateDocumentContentRequest struct {
 type UpdateDocumentContentResponse struct {
 	Document DocumentDetailResponseData `json:"document"`
 }
+
+// SearchDocumentsRequest - 按关键字搜索当前目录文档的请求参数。
+type SearchDocumentsRequest struct {
+	Keyword  string
+	FolderID *int64
+}
+
+// SearchDocumentsResponse - 文档搜索返回数据。
+type SearchDocumentsResponse struct {
+	Documents []DocumentSummaryResponse `json:"documents"`
+}

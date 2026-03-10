@@ -9,6 +9,8 @@ import { DocumentSearchEmptyState } from './DocumentSearchEmptyState';
 export interface DocumentListContentProps {
   containerRef: RefObject<HTMLDivElement>;
   isLoading: boolean;
+  isSearchingDocuments: boolean;
+  searchErrorMessage: string;
   totalDocumentCount: number;
   filteredDocuments: DocumentItem[];
   renderedDocuments: DocumentItem[];
@@ -26,6 +28,8 @@ export interface DocumentListContentProps {
 export function DocumentListContent({
   containerRef,
   isLoading,
+  isSearchingDocuments,
+  searchErrorMessage,
   totalDocumentCount,
   filteredDocuments,
   renderedDocuments,
@@ -38,15 +42,23 @@ export function DocumentListContent({
     <CardContent className="flex-1 overflow-y-auto p-6 pt-6" ref={containerRef}>
       {isLoading ? <EmptyState description="正在加载你的文档列表..." /> : null}
 
-      {!isLoading && totalDocumentCount === 0 ? (
+      {!isLoading && isSearchingDocuments ? (
+        <EmptyState description="正在搜索当前目录中的标题和正文..." title="搜索中" />
+      ) : null}
+
+      {!isLoading && !isSearchingDocuments && totalDocumentCount === 0 ? (
         <EmptyState description="这个目录还没有文档，试试创建第一篇空文档吧。" title="还没有文档" />
       ) : null}
 
-      {!isLoading && totalDocumentCount > 0 && filteredDocuments.length === 0 ? (
+      {!isLoading && !isSearchingDocuments && searchErrorMessage ? (
+        <EmptyState description={searchErrorMessage} title="搜索失败" />
+      ) : null}
+
+      {!isLoading && !isSearchingDocuments && !searchErrorMessage && totalDocumentCount > 0 && filteredDocuments.length === 0 ? (
         <DocumentSearchEmptyState onClearSearch={onClearSearch} searchKeyword={searchKeyword} />
       ) : null}
 
-      {!isLoading && filteredDocuments.length > 0 ? (
+      {!isLoading && !isSearchingDocuments && filteredDocuments.length > 0 ? (
         <div className="space-y-3" style={listPaddingStyle}>
           {renderedDocuments.map(renderDocumentItem)}
         </div>

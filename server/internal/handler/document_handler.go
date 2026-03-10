@@ -48,6 +48,35 @@ func (handler *DocumentHandler) GetDocumentDetail(ctx *gin.Context) {
 	WriteSuccess(ctx, http.StatusOK, response)
 }
 
+// SearchDocuments - 搜索当前用户当前目录内标题或正文命中的文档。
+// 参数 ctx: Gin 请求上下文。
+func (handler *DocumentHandler) SearchDocuments(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	request := dto.SearchDocumentsRequest{
+		Keyword: ctx.Query("keyword"),
+	}
+
+	folderID, ok := parseOptionalFolderID(ctx, "folder_id")
+	if !ok {
+		return
+	}
+	request.FolderID = folderID
+
+	response, err := handler.documentService.SearchDocuments(ctx.Request.Context(), userID, request)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}
+
 // UpdateDocumentContent - 保存当前用户的文档正文内容。
 // 参数 ctx: Gin 请求上下文。
 func (handler *DocumentHandler) UpdateDocumentContent(ctx *gin.Context) {
@@ -86,4 +115,19 @@ func parseDocumentID(ctx *gin.Context) (int64, bool) {
 	}
 
 	return documentID, true
+}
+
+func parseOptionalFolderID(ctx *gin.Context, queryKey string) (*int64, bool) {
+	rawFolderID := ctx.Query(queryKey)
+	if rawFolderID == "" {
+		return nil, true
+	}
+
+	folderID, err := strconv.ParseInt(rawFolderID, 10, 64)
+	if err != nil || folderID <= 0 {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return nil, false
+	}
+
+	return &folderID, true
 }

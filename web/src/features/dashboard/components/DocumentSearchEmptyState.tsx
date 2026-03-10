@@ -23,7 +23,7 @@ export function DocumentSearchEmptyState({
           清空搜索
         </Button>
       }
-      description={`当前目录中没有标题包含“${searchKeyword.trim()}”的文档，试试更换关键字或直接查看全部文档。`}
+      description={`当前目录中没有标题或正文包含“${searchKeyword.trim()}”的文档，试试更换关键字或直接查看全部文档。`}
       title="没有匹配结果"
     />
   );

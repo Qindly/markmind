@@ -48,6 +48,7 @@ func NewRouter(
 		protected.PUT("/folders/:id", dashboardHandler.UpdateFolder)
 		protected.DELETE("/folders/:id", dashboardHandler.DeleteFolder)
 		protected.POST("/documents", dashboardHandler.CreateDocument)
+		protected.GET("/documents/search", documentHandler.SearchDocuments)
 		protected.GET("/documents/:id", documentHandler.GetDocumentDetail)
 		protected.PUT("/documents/:id", dashboardHandler.UpdateDocument)
 		protected.PUT("/documents/:id/content", documentHandler.UpdateDocumentContent)

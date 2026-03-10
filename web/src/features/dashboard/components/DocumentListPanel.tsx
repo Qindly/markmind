@@ -2,21 +2,24 @@
 import { Card, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentItem } from '../../../types/dashboard';
+import {
+  DOCUMENT_LIST_ROW_HEIGHT,
+  DOCUMENT_LIST_VIRTUAL_THRESHOLD,
+  getDocumentListDescription,
+  getDocumentListHeight,
+} from '../documentListPanelLayout';
 import { useVirtualListWindow } from '../useVirtualListWindow';
 import { DocumentListContent } from './DocumentListContent';
 import { DocumentListItem } from './DocumentListItem';
 import { DocumentListToolbar } from './DocumentListToolbar';
-
-const DOCUMENT_LIST_VIRTUAL_THRESHOLD = 40;
-const DOCUMENT_LIST_ITEM_HEIGHT = 96;
-const DOCUMENT_LIST_ITEM_GAP = 12;
-const DOCUMENT_LIST_ROW_HEIGHT = DOCUMENT_LIST_ITEM_HEIGHT + DOCUMENT_LIST_ITEM_GAP;
 
 export interface DocumentListPanelProps {
   currentFolderName: string;
   documents: DocumentItem[];
   totalDocumentCount: number;
   searchKeyword: string;
+  isSearchingDocuments: boolean;
+  searchErrorMessage: string;
   selectedDocumentId: number | null;
   documentMenuId: number | null;
   editingDocumentId: number | null;
@@ -38,16 +41,6 @@ export interface DocumentListPanelProps {
   onCancelEditing: () => void;
 }
 
-function getDocumentListDescription(totalDocumentCount: number, filteredDocumentCount: number, hasSearchKeyword: boolean): string {
-  return hasSearchKeyword
-    ? `当前目录共 ${totalDocumentCount} 篇文档，匹配到 ${filteredDocumentCount} 篇。`
-    : `当前共展示 ${totalDocumentCount} 篇文档。`;
-}
-
-function getDocumentListHeight(itemCount: number): number {
-  return itemCount === 0 ? 0 : itemCount * DOCUMENT_LIST_ITEM_HEIGHT + (itemCount - 1) * DOCUMENT_LIST_ITEM_GAP;
-}
-
 /**
  * DocumentListPanel - 首页右侧文档列表面板。
  * 参数 props: 当前目录、文档列表与相关交互回调。
@@ -58,6 +51,8 @@ export function DocumentListPanel({
   documents,
   totalDocumentCount,
   searchKeyword,
+  isSearchingDocuments,
+  searchErrorMessage,
   selectedDocumentId,
   documentMenuId,
   editingDocumentId,
@@ -99,13 +94,14 @@ export function DocumentListPanel({
           action={
             <DocumentListToolbar
               isCreatingDocument={isCreatingDocument}
+              isSearchingDocuments={isSearchingDocuments}
               onChangeSearchKeyword={onChangeSearchKeyword}
               onClearSearch={onClearSearch}
               onCreateDocument={onCreateDocument}
               searchKeyword={searchKeyword}
             />
           }
-          description={getDocumentListDescription(totalDocumentCount, documents.length, hasSearchKeyword)}
+          description={getDocumentListDescription(totalDocumentCount, documents.length, hasSearchKeyword, isSearchingDocuments)}
           eyebrow="Dashboard"
           title={currentFolderName}
         />
@@ -115,6 +111,7 @@ export function DocumentListPanel({
         containerRef={containerRef}
         filteredDocuments={documents}
         isLoading={isLoading}
+        isSearchingDocuments={isSearchingDocuments}
         listPaddingStyle={listPaddingStyle}
         onClearSearch={onClearSearch}
         renderDocumentItem={(document) => (
@@ -144,6 +141,7 @@ export function DocumentListPanel({
           />
         )}
         renderedDocuments={renderedDocuments}
+        searchErrorMessage={searchErrorMessage}
         searchKeyword={searchKeyword}
         totalDocumentCount={totalDocumentCount}
       />

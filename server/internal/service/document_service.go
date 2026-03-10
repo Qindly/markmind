@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	appconst "github.com/Qindly/markmind/internal/const"
 	"github.com/Qindly/markmind/internal/dto"
@@ -13,18 +14,27 @@ import (
 // DocumentServicer - 文档详情与正文编辑服务接口。
 type DocumentServicer interface {
 	GetDocumentDetail(ctx context.Context, userID int64, documentID int64) (*dto.GetDocumentDetailResponse, error)
+	SearchDocuments(ctx context.Context, userID int64, request dto.SearchDocumentsRequest) (*dto.SearchDocumentsResponse, error)
 	UpdateDocumentContent(ctx context.Context, userID int64, documentID int64, request dto.UpdateDocumentContentRequest) (*dto.UpdateDocumentContentResponse, error)
 }
 
 type documentService struct {
+	folderRepository   repository.FolderRepository
 	documentRepository repository.DocumentRepository
 }
 
 // NewDocumentService - 创建文档详情与正文编辑服务实现。
+// 参数 folderRepository: 文件夹仓储。
 // 参数 documentRepository: 文档仓储。
 // 返回值：文档服务实例。
-func NewDocumentService(documentRepository repository.DocumentRepository) DocumentServicer {
-	return &documentService{documentRepository: documentRepository}
+func NewDocumentService(
+	folderRepository repository.FolderRepository,
+	documentRepository repository.DocumentRepository,
+) DocumentServicer {
+	return &documentService{
+		folderRepository:   folderRepository,
+		documentRepository: documentRepository,
+	}
 }
 
 func (service *documentService) GetDocumentDetail(
@@ -44,6 +54,41 @@ func (service *documentService) GetDocumentDetail(
 	return &dto.GetDocumentDetailResponse{
 		Document: toDocumentDetail(*document),
 	}, nil
+}
+
+func (service *documentService) SearchDocuments(
+	ctx context.Context,
+	userID int64,
+	request dto.SearchDocumentsRequest,
+) (*dto.SearchDocumentsResponse, error) {
+	keyword := strings.TrimSpace(request.Keyword)
+	if keyword == "" {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	if request.FolderID != nil {
+		if *request.FolderID <= 0 {
+			return nil, appconst.ErrInvalidParams
+		}
+
+		if _, err := service.folderRepository.FindFolderByIDAndUserID(ctx, *request.FolderID, userID); err != nil {
+			return nil, err
+		}
+	}
+
+	documents, err := service.documentRepository.SearchDocumentsByKeyword(ctx, userID, request.FolderID, keyword)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &dto.SearchDocumentsResponse{
+		Documents: make([]dto.DocumentSummaryResponse, 0, len(documents)),
+	}
+	for _, document := range documents {
+		response.Documents = append(response.Documents, toDocumentSearchSummary(document))
+	}
+
+	return response, nil
 }
 
 func (service *documentService) UpdateDocumentContent(
@@ -77,6 +122,16 @@ func toDocumentDetail(document model.Document) dto.DocumentDetailResponseData {
 		FolderID:  document.FolderID,
 		Title:     document.Title,
 		Content:   document.Content,
+		CreatedAt: document.CreatedAt,
+		UpdatedAt: document.UpdatedAt,
+	}
+}
+
+func toDocumentSearchSummary(document model.Document) dto.DocumentSummaryResponse {
+	return dto.DocumentSummaryResponse{
+		ID:        document.ID,
+		FolderID:  document.FolderID,
+		Title:     document.Title,
 		CreatedAt: document.CreatedAt,
 		UpdatedAt: document.UpdatedAt,
 	}

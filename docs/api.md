@@ -476,6 +476,56 @@
 }
 ```
 
+### 搜索当前目录文档
+- **请求方式**：GET
+- **路由**：`/api/v1/documents/search`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| keyword | query | string | 是 | 搜索关键字，会同时匹配文档标题和正文内容 |
+| folder_id | query | number | 否 | 当前目录 ID；不传表示搜索根目录 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "documents": [
+      {
+        "id": 11,
+        "folder_id": 3,
+        "title": "React Hooks 速记",
+        "created_at": "2026-03-09T10:00:00Z",
+        "updated_at": "2026-03-09T11:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40001,
+  "message": "无效的请求参数"
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40006,
+  "message": "文件夹不存在"
+}
+```
+
 ### 上传编辑器图片
 - **请求方式**：POST
 - **路由**：`/api/v1/uploads/images`

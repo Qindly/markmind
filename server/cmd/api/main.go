@@ -52,7 +52,7 @@ func main() {
 	sessionRepository := repository.NewSessionRepository(redisClient, cfg.RefreshTokenTTL)
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
-	documentService := service.NewDocumentService(documentRepository)
+	documentService := service.NewDocumentService(folderRepository, documentRepository)
 	uploadService := service.NewUploadService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)

@@ -17,6 +17,7 @@ import (
 // DocumentRepository - 文档数据访问接口。
 type DocumentRepository interface {
 	ListDocumentsByUserID(ctx context.Context, userID int64) ([]model.Document, error)
+	SearchDocumentsByKeyword(ctx context.Context, userID int64, folderID *int64, keyword string) ([]model.Document, error)
 	CreateDocument(ctx context.Context, document model.Document) (*model.Document, error)
 	CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error)
 	FindDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) (*model.Document, error)
@@ -81,6 +82,55 @@ func (repository *documentRepository) CreateDocument(ctx context.Context, docume
 	}
 
 	return createdDocument, nil
+}
+
+func (repository *documentRepository) SearchDocumentsByKeyword(
+	ctx context.Context,
+	userID int64,
+	folderID *int64,
+	keyword string,
+) ([]model.Document, error) {
+	queryArgs := []any{userID, "%" + keyword + "%"}
+	query := `
+		SELECT id, user_id, folder_id, title, content, created_at, updated_at
+		FROM documents
+		WHERE user_id = $1 AND folder_id IS NULL
+			AND (title ILIKE $2 OR content ILIKE $2)
+		ORDER BY updated_at DESC, id DESC
+	`
+
+	if folderID != nil {
+		query = `
+			SELECT id, user_id, folder_id, title, content, created_at, updated_at
+			FROM documents
+			WHERE user_id = $1 AND folder_id = $2
+				AND (title ILIKE $3 OR content ILIKE $3)
+			ORDER BY updated_at DESC, id DESC
+		`
+		queryArgs = []any{userID, *folderID, "%" + keyword + "%"}
+	}
+
+	rows, err := repository.pool.Query(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("搜索文档失败: %w", err)
+	}
+	defer rows.Close()
+
+	documents := make([]model.Document, 0)
+	for rows.Next() {
+		document, scanErr := scanDocument(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+
+		documents = append(documents, *document)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("遍历搜索结果失败: %w", err)
+	}
+
+	return documents, nil
 }
 
 func (repository *documentRepository) CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error) {
