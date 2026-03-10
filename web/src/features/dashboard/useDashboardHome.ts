@@ -77,6 +77,7 @@ export function useDashboardHome() {
   const clearSession = useAuthStore((state) => state.clearSession);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -103,6 +104,15 @@ export function useDashboardHome() {
     () => documents.filter((document) => document.folder_id === selectedFolderId),
     [documents, selectedFolderId],
   );
+
+  const filteredDocuments = useMemo(() => {
+    const normalizedKeyword = searchKeyword.trim().toLowerCase();
+    if (normalizedKeyword === '') {
+      return visibleDocuments;
+    }
+
+    return visibleDocuments.filter((document) => document.title.toLowerCase().includes(normalizedKeyword));
+  }, [searchKeyword, visibleDocuments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +172,7 @@ export function useDashboardHome() {
     try {
       const response = await createFolder({ name });
       setFolders((currentFolders) => [...currentFolders, response.folder]);
+      setSearchKeyword('');
       setSelectedFolderId(response.folder.id);
       setSelectedDocumentId(null);
       setMenuState(null);
@@ -198,8 +209,17 @@ export function useDashboardHome() {
   function handleSelectFolder(folderId: number | null) {
     setSelectedFolderId(folderId);
     setSelectedDocumentId(null);
+    setSearchKeyword('');
     setMenuState(null);
     setEditingState(null);
+  }
+
+  function handleChangeSearchKeyword(value: string) {
+    setSearchKeyword(value);
+  }
+
+  function handleClearSearchKeyword() {
+    setSearchKeyword('');
   }
 
   function handleSelectDocument(documentId: number) {
@@ -378,6 +398,7 @@ export function useDashboardHome() {
         await deleteFolder(target.id);
         setFolders((currentFolders) => currentFolders.filter((folder) => folder.id !== target.id));
         if (selectedFolderId === target.id) {
+          setSearchKeyword('');
           setSelectedFolderId(null);
           setSelectedDocumentId(null);
         }
@@ -413,6 +434,9 @@ export function useDashboardHome() {
     user,
     folders,
     visibleDocuments,
+    filteredDocuments,
+    currentFolderDocumentCount: visibleDocuments.length,
+    searchKeyword,
     selectedFolderId,
     selectedFolderName: selectedFolder?.name ?? '根目录',
     selectedDocumentId,
@@ -438,6 +462,8 @@ export function useDashboardHome() {
     handleCreateDocument,
     handleSelectFolder,
     handleSelectDocument,
+    handleChangeSearchKeyword,
+    handleClearSearchKeyword,
     handleOpenFolderMenu,
     handleOpenDocumentMenu,
     handleCloseFolderMenu,

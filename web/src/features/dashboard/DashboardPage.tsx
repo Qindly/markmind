@@ -52,7 +52,7 @@ export function DashboardPage() {
             <DocumentListPanel
               currentFolderName={dashboard.selectedFolderName}
               documentMenuId={dashboard.documentMenuId}
-              documents={dashboard.visibleDocuments}
+              documents={dashboard.filteredDocuments}
               editingDocumentId={dashboard.editingDocumentId}
               editingValue={dashboard.editingValue}
               isCreatingDocument={dashboard.isCreatingDocument}
@@ -60,7 +60,9 @@ export function DashboardPage() {
               isUpdatingDocument={dashboard.isUpdatingDocument}
               onCancelEditing={dashboard.handleCancelEditing}
               onChangeEditingValue={dashboard.handleChangeEditingValue}
+              onChangeSearchKeyword={dashboard.handleChangeSearchKeyword}
               onCloseDocumentMenu={dashboard.handleCloseDocumentMenu}
+              onClearSearch={dashboard.handleClearSearchKeyword}
               onCreateDocument={dashboard.handleCreateDocument}
               onOpenDocumentMenu={dashboard.handleOpenDocumentMenu}
               onRequestMoveDocument={dashboard.handleRequestMoveDocument}
@@ -68,7 +70,9 @@ export function DashboardPage() {
               onSelectDocument={dashboard.handleSelectDocument}
               onStartDocumentEditing={dashboard.handleStartDocumentEditing}
               onSubmitEditing={dashboard.handleSubmitEditing}
+              searchKeyword={dashboard.searchKeyword}
               selectedDocumentId={dashboard.selectedDocumentId}
+              totalDocumentCount={dashboard.currentFolderDocumentCount}
             />
           </div>
         </div>

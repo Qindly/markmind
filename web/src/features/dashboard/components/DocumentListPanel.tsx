@@ -1,11 +1,11 @@
 ﻿// DocumentListPanel.tsx - 渲染首页右侧文档列表与创建入口
-import { Button } from '../../../components/ui/Button';
-import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
-import { EmptyState } from '../../../components/ui/EmptyState';
+import { Card, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentItem } from '../../../types/dashboard';
 import { useVirtualListWindow } from '../useVirtualListWindow';
+import { DocumentListContent } from './DocumentListContent';
 import { DocumentListItem } from './DocumentListItem';
+import { DocumentListToolbar } from './DocumentListToolbar';
 
 const DOCUMENT_LIST_VIRTUAL_THRESHOLD = 40;
 const DOCUMENT_LIST_ITEM_HEIGHT = 96;
@@ -15,6 +15,8 @@ const DOCUMENT_LIST_ROW_HEIGHT = DOCUMENT_LIST_ITEM_HEIGHT + DOCUMENT_LIST_ITEM_
 export interface DocumentListPanelProps {
   currentFolderName: string;
   documents: DocumentItem[];
+  totalDocumentCount: number;
+  searchKeyword: string;
   selectedDocumentId: number | null;
   documentMenuId: number | null;
   editingDocumentId: number | null;
@@ -29,17 +31,21 @@ export interface DocumentListPanelProps {
   onRequestMoveDocument: (document: DocumentItem) => void;
   onStartDocumentEditing: (document: DocumentItem) => void;
   onRequestDeleteDocument: (document: DocumentItem) => void;
+  onChangeSearchKeyword: (value: string) => void;
+  onClearSearch: () => void;
   onChangeEditingValue: (value: string) => void;
   onSubmitEditing: () => Promise<void>;
   onCancelEditing: () => void;
 }
 
-function getDocumentListHeight(itemCount: number): number {
-  if (itemCount === 0) {
-    return 0;
-  }
+function getDocumentListDescription(totalDocumentCount: number, filteredDocumentCount: number, hasSearchKeyword: boolean): string {
+  return hasSearchKeyword
+    ? `当前目录共 ${totalDocumentCount} 篇文档，匹配到 ${filteredDocumentCount} 篇。`
+    : `当前共展示 ${totalDocumentCount} 篇文档。`;
+}
 
-  return itemCount * DOCUMENT_LIST_ITEM_HEIGHT + (itemCount - 1) * DOCUMENT_LIST_ITEM_GAP;
+function getDocumentListHeight(itemCount: number): number {
+  return itemCount === 0 ? 0 : itemCount * DOCUMENT_LIST_ITEM_HEIGHT + (itemCount - 1) * DOCUMENT_LIST_ITEM_GAP;
 }
 
 /**
@@ -50,6 +56,8 @@ function getDocumentListHeight(itemCount: number): number {
 export function DocumentListPanel({
   currentFolderName,
   documents,
+  totalDocumentCount,
+  searchKeyword,
   selectedDocumentId,
   documentMenuId,
   editingDocumentId,
@@ -64,10 +72,13 @@ export function DocumentListPanel({
   onRequestMoveDocument,
   onStartDocumentEditing,
   onRequestDeleteDocument,
+  onChangeSearchKeyword,
+  onClearSearch,
   onChangeEditingValue,
   onSubmitEditing,
   onCancelEditing,
 }: DocumentListPanelProps) {
+  const hasSearchKeyword = searchKeyword.trim() !== '';
   const isVirtualListEnabled = !isLoading && editingDocumentId === null && documents.length > DOCUMENT_LIST_VIRTUAL_THRESHOLD;
   const { containerRef, startIndex, endIndex } = useVirtualListWindow({
     enabled: isVirtualListEnabled,
@@ -78,71 +89,64 @@ export function DocumentListPanel({
   const totalHeight = getDocumentListHeight(documents.length);
   const renderedHeight = getDocumentListHeight(renderedDocuments.length);
   const listPaddingStyle = isVirtualListEnabled
-    ? {
-        paddingTop: startIndex * DOCUMENT_LIST_ROW_HEIGHT,
-        paddingBottom: Math.max(0, totalHeight - startIndex * DOCUMENT_LIST_ROW_HEIGHT - renderedHeight),
-      }
+    ? { paddingTop: startIndex * DOCUMENT_LIST_ROW_HEIGHT, paddingBottom: Math.max(0, totalHeight - startIndex * DOCUMENT_LIST_ROW_HEIGHT - renderedHeight) }
     : undefined;
-
-  function renderDocumentItem(document: DocumentItem) {
-    return (
-      <DocumentListItem
-        document={document}
-        editingValue={editingValue}
-        isEditing={editingDocumentId === document.id}
-        isMenuOpen={documentMenuId === document.id}
-        isSaving={isUpdatingDocument && editingDocumentId === document.id}
-        isSelected={selectedDocumentId === document.id}
-        key={document.id}
-        onCancelEdit={onCancelEditing}
-        onDelete={() => onRequestDeleteDocument(document)}
-        onEditValueChange={onChangeEditingValue}
-        onMenuOpenChange={(open) => {
-          if (open) {
-            onOpenDocumentMenu(document.id);
-            return;
-          }
-
-          onCloseDocumentMenu(document.id);
-        }}
-        onMove={() => onRequestMoveDocument(document)}
-        onSelect={() => onSelectDocument(document.id)}
-        onStartEdit={() => onStartDocumentEditing(document)}
-        onSubmitEdit={onSubmitEditing}
-      />
-    );
-  }
 
   return (
     <Card className="flex min-h-[720px] flex-1 flex-col">
       <CardHeader className="border-b border-[var(--color-border-soft)] p-6 pb-5">
         <SectionHeader
           action={
-            <Button className="h-10 w-auto px-3 text-xs" isLoading={isCreatingDocument} onClick={onCreateDocument} type="button" variant="secondary">
-              新建空文档
-            </Button>
+            <DocumentListToolbar
+              isCreatingDocument={isCreatingDocument}
+              onChangeSearchKeyword={onChangeSearchKeyword}
+              onClearSearch={onClearSearch}
+              onCreateDocument={onCreateDocument}
+              searchKeyword={searchKeyword}
+            />
           }
-          description={`当前共展示 ${documents.length} 篇文档。`}
+          description={getDocumentListDescription(totalDocumentCount, documents.length, hasSearchKeyword)}
           eyebrow="Dashboard"
           title={currentFolderName}
         />
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto p-6 pt-6" ref={containerRef}>
-        {isLoading ? (
-          <EmptyState description="正在加载你的文档列表..." />
-        ) : null}
+      <DocumentListContent
+        containerRef={containerRef}
+        filteredDocuments={documents}
+        isLoading={isLoading}
+        listPaddingStyle={listPaddingStyle}
+        onClearSearch={onClearSearch}
+        renderDocumentItem={(document) => (
+          <DocumentListItem
+            document={document}
+            editingValue={editingValue}
+            isEditing={editingDocumentId === document.id}
+            isMenuOpen={documentMenuId === document.id}
+            isSaving={isUpdatingDocument && editingDocumentId === document.id}
+            isSelected={selectedDocumentId === document.id}
+            key={document.id}
+            onCancelEdit={onCancelEditing}
+            onDelete={() => onRequestDeleteDocument(document)}
+            onEditValueChange={onChangeEditingValue}
+            onMenuOpenChange={(open) => {
+              if (open) {
+                onOpenDocumentMenu(document.id);
+                return;
+              }
 
-        {!isLoading && documents.length === 0 ? (
-          <EmptyState description="这个目录还没有文档，试试创建第一篇空文档吧。" title="还没有文档" />
-        ) : null}
-
-        {!isLoading && documents.length > 0 ? (
-          <div className="space-y-3" style={listPaddingStyle}>
-            {renderedDocuments.map(renderDocumentItem)}
-          </div>
-        ) : null}
-      </CardContent>
+              onCloseDocumentMenu(document.id);
+            }}
+            onMove={() => onRequestMoveDocument(document)}
+            onSelect={() => onSelectDocument(document.id)}
+            onStartEdit={() => onStartDocumentEditing(document)}
+            onSubmitEdit={onSubmitEditing}
+          />
+        )}
+        renderedDocuments={renderedDocuments}
+        searchKeyword={searchKeyword}
+        totalDocumentCount={totalDocumentCount}
+      />
     </Card>
   );
 }
