@@ -18,6 +18,10 @@ import type {
   UpdateFolderResponseData,
 } from '../types/dashboard';
 
+interface SearchDocumentsOptions {
+  signal?: AbortSignal;
+}
+
 // fetchDashboard - 请求首页所需的文件夹与文档数据。
 // 返回值：首页展示数据。
 export async function fetchDashboard(): Promise<DashboardData> {
@@ -27,13 +31,18 @@ export async function fetchDashboard(): Promise<DashboardData> {
 
 // searchDocuments - 搜索当前目录标题或正文命中的文档。
 // 参数 payload: 搜索关键字与当前目录。
+// 参数 options: 可选的取消请求配置。
 // 返回值：匹配到的文档摘要列表。
-export async function searchDocuments(payload: SearchDocumentsRequest): Promise<SearchDocumentsResponseData> {
+export async function searchDocuments(
+  payload: SearchDocumentsRequest,
+  options?: SearchDocumentsOptions,
+): Promise<SearchDocumentsResponseData> {
   const { data } = await apiClient.get<ApiResponse<SearchDocumentsResponseData>>('/documents/search', {
     params: {
       keyword: payload.keyword,
       ...(payload.folder_id === undefined || payload.folder_id === null ? {} : { folder_id: payload.folder_id }),
     },
+    signal: options?.signal,
   });
 
   return data.data;

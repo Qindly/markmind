@@ -52,6 +52,7 @@ export function DashboardPage() {
             <DocumentListPanel
               currentFolderName={dashboard.selectedFolderName}
               documentMenuId={dashboard.documentMenuId}
+              documentSortMode={dashboard.documentSortMode}
               documents={dashboard.filteredDocuments}
               editingDocumentId={dashboard.editingDocumentId}
               editingValue={dashboard.editingValue}
@@ -60,6 +61,7 @@ export function DashboardPage() {
               isSearchingDocuments={dashboard.isSearchingDocuments}
               isUpdatingDocument={dashboard.isUpdatingDocument}
               onCancelEditing={dashboard.handleCancelEditing}
+              onChangeDocumentSortMode={dashboard.handleChangeDocumentSortMode}
               onChangeEditingValue={dashboard.handleChangeEditingValue}
               onChangeSearchKeyword={dashboard.handleChangeSearchKeyword}
               onCloseDocumentMenu={dashboard.handleCloseDocumentMenu}

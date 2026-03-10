@@ -34,7 +34,17 @@ type SearchDocumentsRequest struct {
 	FolderID *int64
 }
 
+// DocumentSearchSummaryResponse - 文档搜索结果列表项。
+type DocumentSearchSummaryResponse struct {
+	ID        int64     `json:"id"`
+	FolderID  *int64    `json:"folder_id"`
+	Title     string    `json:"title"`
+	Snippet   string    `json:"snippet"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // SearchDocumentsResponse - 文档搜索返回数据。
 type SearchDocumentsResponse struct {
-	Documents []DocumentSummaryResponse `json:"documents"`
+	Documents []DocumentSearchSummaryResponse `json:"documents"`
 }

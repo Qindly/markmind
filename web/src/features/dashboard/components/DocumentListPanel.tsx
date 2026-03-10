@@ -1,7 +1,7 @@
 ﻿// DocumentListPanel.tsx - 渲染首页右侧文档列表与创建入口
 import { Card, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
-import type { DocumentItem } from '../../../types/dashboard';
+import type { DashboardDocumentListItem, DocumentItem, DocumentSortMode } from '../../../types/dashboard';
 import {
   DOCUMENT_LIST_ROW_HEIGHT,
   DOCUMENT_LIST_VIRTUAL_THRESHOLD,
@@ -15,8 +15,9 @@ import { DocumentListToolbar } from './DocumentListToolbar';
 
 export interface DocumentListPanelProps {
   currentFolderName: string;
-  documents: DocumentItem[];
+  documents: DashboardDocumentListItem[];
   totalDocumentCount: number;
+  documentSortMode: DocumentSortMode;
   searchKeyword: string;
   isSearchingDocuments: boolean;
   searchErrorMessage: string;
@@ -35,6 +36,7 @@ export interface DocumentListPanelProps {
   onStartDocumentEditing: (document: DocumentItem) => void;
   onRequestDeleteDocument: (document: DocumentItem) => void;
   onChangeSearchKeyword: (value: string) => void;
+  onChangeDocumentSortMode: (sortMode: DocumentSortMode) => void;
   onClearSearch: () => void;
   onChangeEditingValue: (value: string) => void;
   onSubmitEditing: () => Promise<void>;
@@ -50,6 +52,7 @@ export function DocumentListPanel({
   currentFolderName,
   documents,
   totalDocumentCount,
+  documentSortMode,
   searchKeyword,
   isSearchingDocuments,
   searchErrorMessage,
@@ -68,6 +71,7 @@ export function DocumentListPanel({
   onStartDocumentEditing,
   onRequestDeleteDocument,
   onChangeSearchKeyword,
+  onChangeDocumentSortMode,
   onClearSearch,
   onChangeEditingValue,
   onSubmitEditing,
@@ -93,8 +97,10 @@ export function DocumentListPanel({
         <SectionHeader
           action={
             <DocumentListToolbar
+              documentSortMode={documentSortMode}
               isCreatingDocument={isCreatingDocument}
               isSearchingDocuments={isSearchingDocuments}
+              onChangeDocumentSortMode={onChangeDocumentSortMode}
               onChangeSearchKeyword={onChangeSearchKeyword}
               onClearSearch={onClearSearch}
               onCreateDocument={onCreateDocument}
@@ -136,6 +142,7 @@ export function DocumentListPanel({
             }}
             onMove={() => onRequestMoveDocument(document)}
             onSelect={() => onSelectDocument(document.id)}
+            searchKeyword={searchKeyword}
             onStartEdit={() => onStartDocumentEditing(document)}
             onSubmitEdit={onSubmitEditing}
           />

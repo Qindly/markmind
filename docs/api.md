@@ -489,6 +489,8 @@
 | keyword | query | string | 是 | 搜索关键字，会同时匹配文档标题和正文内容 |
 | folder_id | query | number | 否 | 当前目录 ID；不传表示搜索根目录 |
 
+- **返回说明**：`snippet` 为服务端生成的正文纯文本摘要；正文命中时优先返回命中附近片段，只有标题命中时回退到正文开头摘要。
+
 #### 返回样例
 
 **成功（200）**：
@@ -498,15 +500,16 @@
   "message": "success",
   "data": {
     "documents": [
-      {
-        "id": 11,
-        "folder_id": 3,
-        "title": "React Hooks 速记",
-        "created_at": "2026-03-09T10:00:00Z",
-        "updated_at": "2026-03-09T11:00:00Z"
-      }
-    ]
-  }
+        {
+          "id": 11,
+          "folder_id": 3,
+          "title": "React Hooks 速记",
+          "snippet": "...React Router 的嵌套路由需要和 Outlet 配合使用，才能让页面结构更清晰。",
+          "created_at": "2026-03-09T10:00:00Z",
+          "updated_at": "2026-03-09T11:00:00Z"
+        }
+      ]
+    }
 }
 ```
 

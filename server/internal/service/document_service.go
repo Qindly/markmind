@@ -9,6 +9,7 @@ import (
 	"github.com/Qindly/markmind/internal/dto"
 	"github.com/Qindly/markmind/internal/model"
 	"github.com/Qindly/markmind/internal/repository"
+	"github.com/Qindly/markmind/internal/util"
 )
 
 // DocumentServicer - 文档详情与正文编辑服务接口。
@@ -82,10 +83,10 @@ func (service *documentService) SearchDocuments(
 	}
 
 	response := &dto.SearchDocumentsResponse{
-		Documents: make([]dto.DocumentSummaryResponse, 0, len(documents)),
+		Documents: make([]dto.DocumentSearchSummaryResponse, 0, len(documents)),
 	}
 	for _, document := range documents {
-		response.Documents = append(response.Documents, toDocumentSearchSummary(document))
+		response.Documents = append(response.Documents, toDocumentSearchSummary(document, keyword))
 	}
 
 	return response, nil
@@ -127,11 +128,12 @@ func toDocumentDetail(document model.Document) dto.DocumentDetailResponseData {
 	}
 }
 
-func toDocumentSearchSummary(document model.Document) dto.DocumentSummaryResponse {
-	return dto.DocumentSummaryResponse{
+func toDocumentSearchSummary(document model.Document, keyword string) dto.DocumentSearchSummaryResponse {
+	return dto.DocumentSearchSummaryResponse{
 		ID:        document.ID,
 		FolderID:  document.FolderID,
 		Title:     document.Title,
+		Snippet:   util.BuildSearchSnippet(document.Content, keyword),
 		CreatedAt: document.CreatedAt,
 		UpdatedAt: document.UpdatedAt,
 	}

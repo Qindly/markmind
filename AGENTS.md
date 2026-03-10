@@ -164,7 +164,8 @@ markmind/                          # 项目根目录（Git Monorepo）
 | 常量 | UPPER_SNAKE_CASE | `API_BASE_URL`, `MAX_FILE_SIZE` |
 
 #### 组件拆分规则（极其重要）
-- **单个组件文件不得超过 150 行**。如果超过，必须拆分为子组件。
+- **单个组件文件应尽量控制在 150 行以内**。如果超过，优先判断是否还能继续按职责拆分为子组件。
+- **允许超过 150 行的例外情况**：当组件内部的功能已经天然属于同一个职责闭环，再继续拆分只会徒增 props 透传、上下文跳转和理解成本时，可以保留在同一个组件文件中，但必须确保这个超出是必要的，而不是偷懒造成的堆积。
 - **拆分原则**：
   - 可复用的 UI 片段 → 提取为 `components/` 下的通用组件。
   - 页面内的独立功能区块 → 提取为 `features/xxx/components/` 下的模块组件。
@@ -460,6 +461,31 @@ feat(auth): 实现用户登录与注册功能
 - 如果 ice 明确同意该下一步建议，Codex 需要将该建议**覆盖写入** `docs/plan.md`。
 - `docs/plan.md` 只用于保存**当前已经确认的下一步任务**，不追加历史版本；历史变更通过 Git 记录追踪。
 - 如果 ice 没有同意新的下一步，Codex **不要擅自修改** `docs/plan.md`。
+
+#### ⑤ 项目亮点文档
+
+- `docs/project-highlights.md` 是项目中用于沉淀**可直接复用到简历、面试和项目介绍中的工程亮点**的专用文档。
+- 只要本次任务产出了 perf 亮点或其他具有项目亮点价值的成果，Codex **必须同步更新** `docs/project-highlights.md`。
+- 每条亮点统一使用以下格式：
+  - 亮点标题
+  - 一句话总结
+  - 引用块，写明原因、具体操作、涉及文件
+- 一句话总结**必须**写成简历式结果表达，优先采用“由于 [背景问题]，通过 [关键方案]，实现/将 [量化结果或收益]”的句式；如果没有明确数字，也要写清楚性能收益、交互稳定性或工程价值。
+- `docs/project-highlights.md` 只写对外表达友好的亮点总结，不替代编号任务文档的实现复盘。
+
+示例：
+
+```markdown
+## 3. Dashboard 搜索防抖与竞态取消
+
+由于 Dashboard 搜索在连续输入时会频繁触发请求，且旧请求晚返回时存在覆盖新结果的风险，通过 300 ms 输入防抖、`AbortController` 主动取消旧请求和取消态错误隔离，减少了无效搜索请求并稳定了最新关键字结果展示。
+
+> 原因：当前目录搜索已经具备标题与正文搜索、摘要高亮等能力，但如果继续在每次按键时立即请求后端，不仅会放大无效请求数量，也容易在网络波动时出现旧结果回写新关键字列表的问题。
+>
+> 具体操作：在 Dashboard 搜索链路中引入通用 `useDebouncedValue` Hook，将实时输入和真正参与搜索的稳定关键字拆开；为 `searchDocuments` 增加 `AbortSignal` 支持，并在 `useDashboardHome` 中维护当前激活的 `AbortController`，当用户继续输入、清空搜索或切换目录时先主动取消旧请求；同时补上取消态错误隔离，避免主动取消把列表误切成“搜索失败”状态。
+>
+> 涉及文件：`web/src/features/dashboard/useDashboardHome.ts`、`web/src/api/dashboard.ts`、`web/src/hooks/useDebouncedValue.ts`、`web/src/lib/isRequestCanceled.ts`、`docs/39-dashboard-search-perf.md`
+```
 
 ### 8.3 工作流程
 

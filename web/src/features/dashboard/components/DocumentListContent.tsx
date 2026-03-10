@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode, RefObject } from 'react';
 
 import { CardContent } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import type { DocumentItem } from '../../../types/dashboard';
+import type { DashboardDocumentListItem } from '../../../types/dashboard';
 import { DocumentSearchEmptyState } from './DocumentSearchEmptyState';
 
 export interface DocumentListContentProps {
@@ -12,11 +12,11 @@ export interface DocumentListContentProps {
   isSearchingDocuments: boolean;
   searchErrorMessage: string;
   totalDocumentCount: number;
-  filteredDocuments: DocumentItem[];
-  renderedDocuments: DocumentItem[];
+  filteredDocuments: DashboardDocumentListItem[];
+  renderedDocuments: DashboardDocumentListItem[];
   searchKeyword: string;
   listPaddingStyle?: CSSProperties;
-  renderDocumentItem: (document: DocumentItem) => ReactNode;
+  renderDocumentItem: (document: DashboardDocumentListItem) => ReactNode;
   onClearSearch: () => void;
 }
 

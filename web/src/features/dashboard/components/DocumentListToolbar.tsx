@@ -1,39 +1,46 @@
-﻿// DocumentListToolbar.tsx - 渲染文档列表头部的搜索与创建操作区
+﻿// DocumentListToolbar.tsx - 渲染文档列表头部的搜索、排序与创建操作区
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import type { DocumentSortMode } from '../../../types/dashboard';
+import { DocumentSortToggle } from './DocumentSortToggle';
 
 export interface DocumentListToolbarProps {
+  documentSortMode: DocumentSortMode;
   searchKeyword: string;
   isSearchingDocuments: boolean;
   isCreatingDocument: boolean;
   onChangeSearchKeyword: (value: string) => void;
+  onChangeDocumentSortMode: (sortMode: DocumentSortMode) => void;
   onClearSearch: () => void;
   onCreateDocument: () => Promise<void>;
 }
 
 /**
- * DocumentListToolbar - 提供文档搜索输入、清空搜索和新建文档按钮。
- * 参数 props: 搜索状态、创建状态与交互回调。
+ * DocumentListToolbar - 提供文档搜索输入、排序切换、清空搜索和新建文档按钮。
+ * 参数 props: 搜索状态、排序状态、创建状态与交互回调。
  * 返回值：头部操作区 JSX。
  */
 export function DocumentListToolbar({
+  documentSortMode,
   searchKeyword,
   isSearchingDocuments,
   isCreatingDocument,
   onChangeSearchKeyword,
+  onChangeDocumentSortMode,
   onClearSearch,
   onCreateDocument,
 }: DocumentListToolbarProps) {
   const hasSearchKeyword = searchKeyword !== '';
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       <Input
         className="w-full sm:w-72"
         onChange={(event) => onChangeSearchKeyword(event.target.value)}
         placeholder="搜索当前目录中的标题或正文"
         value={searchKeyword}
       />
+      <DocumentSortToggle onChangeSortMode={onChangeDocumentSortMode} sortMode={documentSortMode} />
       {isSearchingDocuments ? <span className="text-sm text-[var(--color-text-secondary)]">搜索中...</span> : null}
       {hasSearchKeyword ? (
         <Button className="h-10 w-full px-4 sm:w-auto" onClick={onClearSearch} type="button" variant="secondary">

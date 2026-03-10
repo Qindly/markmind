@@ -1,10 +1,10 @@
 ﻿# 项目亮点
 
-本文档用于沉淀可直接复用到简历、面试和项目介绍中的工程亮点；后续新增亮点时，统一使用“1 句话结果 + 引用块补充原因、具体操作、涉及文件”的格式追加，不写成长篇任务复盘。
+本文档用于沉淀可直接复用到简历、面试和项目介绍中的工程亮点；后续新增亮点时，统一使用“1 句话结果（简历式结果表达） + 引用块补充原因、具体操作、涉及文件”的格式追加，不写成长篇任务复盘。
 
 ## 1. 前端加载链与编辑器渲染链拆包优化
 
-通过路由级懒加载、Markdown 预览链异步加载和特殊代码块按需加载，把主入口 JS 从约 1.80 MB 压到约 17.65 kB，并将编辑页主体从约 1.67 MB 压到约 639.27 kB。
+由于编辑器预览链、Mermaid 和 ECharts 依赖在构建时持续触发大 chunk 提示，且普通页面首屏链路被重型编辑器能力拖慢，通过路由级懒加载、Markdown 预览链异步化和特殊代码块按需加载，将主入口 JS 从约 1.80 MB 压到约 17.65 kB，并将编辑页主体从约 1.67 MB 压到约 639.27 kB，显著降低了非编辑场景的首次加载成本。
 
 > 原因：登录页、首页和普通 Markdown 文档不需要在首屏提前下载 Mermaid、ECharts 和完整预览依赖，继续把这些能力打进主链路会明显放大首次加载成本。
 >
@@ -14,10 +14,20 @@
 
 ## 2. Dashboard 大文档列表虚拟化
 
-通过手写虚拟列表 Hook 让 Dashboard 在文档数超过 40 条时只渲染可视区附近条目，保证数百到上千条文档下仍能保持流畅滚动和稳定交互。
+由于 Dashboard 右侧文档列表在大数据量下会全量渲染卡片并放大 DOM 与重排开销，通过手写滚动窗口虚拟列表策略，让文档数超过 40 条时只渲染可视区附近条目，保证数百到上千条文档下仍能保持流畅滚动和稳定交互。
 
 > 原因：首页右侧文档列表当前会直接全量渲染全部卡片，文档数量一大时 DOM 节点数和重排开销会明显增长，不适合继续作为长期性能基线。
 >
 > 具体操作：在 Dashboard 模块内手写滚动窗口 Hook，根据滚动容器高度和滚动位置计算需要渲染的文档区间；小列表继续全量渲染，大列表超过 40 条时切换到虚拟化路径；文档进入行内重命名时临时回退全量列表，避免动态高度和自动聚焦破坏滚动计算。
 >
 > 涉及文件：`web/src/features/dashboard/useVirtualListWindow.ts`、`web/src/features/dashboard/components/DocumentListPanel.tsx`、`web/src/features/dashboard/components/DocumentListItem.tsx`、`docs/34-dashboard-virtual-list.md`
+
+## 3. Dashboard 搜索防抖与竞态取消
+
+由于 Dashboard 搜索在连续输入时会频繁触发请求，且旧请求晚返回时存在覆盖新结果的风险，通过 300 ms 输入防抖、`AbortController` 主动取消旧请求和取消态错误隔离，减少了无效搜索请求并稳定了最新关键字结果展示。
+
+> 原因：当前目录搜索已经具备标题与正文搜索、摘要高亮等能力，但如果继续在每次按键时立即请求后端，不仅会放大无效请求数量，也容易在网络波动时出现旧结果回写新关键字列表的问题。
+>
+> 具体操作：在 Dashboard 搜索链路中引入通用 `useDebouncedValue` Hook，将实时输入和真正参与搜索的稳定关键字拆开；为 `searchDocuments` 增加 `AbortSignal` 支持，并在 `useDashboardHome` 中维护当前激活的 `AbortController`，当用户继续输入、清空搜索或切换目录时先主动取消旧请求；同时补上取消态错误隔离，避免主动取消把列表误切成“搜索失败”状态。
+>
+> 涉及文件：`web/src/features/dashboard/useDashboardHome.ts`、`web/src/api/dashboard.ts`、`web/src/hooks/useDebouncedValue.ts`、`web/src/lib/isRequestCanceled.ts`、`docs/39-dashboard-search-perf.md`

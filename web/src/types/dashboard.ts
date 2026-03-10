@@ -14,6 +14,14 @@ export interface DocumentItem {
   updated_at: string;
 }
 
+export interface SearchDocumentItem extends DocumentItem {
+  snippet: string;
+}
+
+export type DashboardDocumentListItem = DocumentItem | SearchDocumentItem;
+
+export type DocumentSortMode = 'updated_desc' | 'title_asc';
+
 export interface DashboardData {
   folders: FolderItem[];
   documents: DocumentItem[];
@@ -67,5 +75,5 @@ export interface SearchDocumentsRequest {
 }
 
 export interface SearchDocumentsResponseData {
-  documents: DocumentItem[];
+  documents: SearchDocumentItem[];
 }
