@@ -24,12 +24,14 @@ import type {
   DocumentSortMode,
   FolderItem,
   SearchDocumentItem,
+  SearchScope,
 } from '../../types/dashboard';
 import { DEFAULT_DOCUMENT_SORT_MODE, sortDocuments } from './documentSort';
 
 type DashboardEntityType = 'folder' | 'document';
 
 const DOCUMENT_SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_SEARCH_SCOPE: SearchScope = 'current_folder';
 
 interface DashboardMenuState {
   type: DashboardEntityType;
@@ -89,6 +91,7 @@ export function useDashboardHome() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [searchResults, setSearchResults] = useState<SearchDocumentItem[] | null>(null);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchScope, setSearchScope] = useState<SearchScope>(DEFAULT_SEARCH_SCOPE);
   const [searchErrorMessage, setSearchErrorMessage] = useState('');
   const [documentSortMode, setDocumentSortMode] = useState<DocumentSortMode>(DEFAULT_DOCUMENT_SORT_MODE);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
@@ -110,10 +113,12 @@ export function useDashboardHome() {
   const [isSearchingDocuments, setIsSearchingDocuments] = useState(false);
   const normalizedSearchKeyword = searchKeyword.trim();
   const debouncedSearchKeyword = useDebouncedValue(normalizedSearchKeyword, DOCUMENT_SEARCH_DEBOUNCE_MS);
+  const searchRequestFolderId = searchScope === 'current_folder' ? selectedFolderId : undefined;
   const isSearchPending =
     normalizedSearchKeyword !== '' && (normalizedSearchKeyword !== debouncedSearchKeyword || isSearchingDocuments);
   const searchResultCount =
     normalizedSearchKeyword === '' || isSearchPending || searchErrorMessage !== '' ? null : (searchResults?.length ?? 0);
+  const isGlobalSearchActive = normalizedSearchKeyword !== '' && searchScope === 'global';
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
@@ -129,6 +134,8 @@ export function useDashboardHome() {
     () => sortDocuments(currentFolderDocuments, documentSortMode),
     [currentFolderDocuments, documentSortMode],
   );
+  const documentPanelTitle = isGlobalSearchActive ? '全部文档' : selectedFolder?.name ?? '根目录';
+  const documentPanelTotalCount = isGlobalSearchActive ? documents.length : currentFolderDocuments.length;
 
   const filteredDocuments = useMemo<DashboardDocumentListItem[]>(() => {
     if (normalizedSearchKeyword === '') {
@@ -216,7 +223,8 @@ export function useDashboardHome() {
         const response = await searchDocuments(
           {
             keyword: normalizedKeyword,
-            folder_id: selectedFolderId,
+            scope: searchScope,
+            folder_id: searchRequestFolderId,
           },
           {
             signal: requestController.signal,
@@ -248,7 +256,7 @@ export function useDashboardHome() {
     return () => {
       cancelActiveSearchRequest(activeSearchRequestControllerRef);
     };
-  }, [debouncedSearchKeyword, documents, selectedFolderId]);
+  }, [debouncedSearchKeyword, documents, searchRequestFolderId, searchScope]);
 
   async function handleLogout() {
     setErrorMessage('');
@@ -315,16 +323,36 @@ export function useDashboardHome() {
   function handleSelectFolder(folderId: number | null) {
     setSelectedFolderId(folderId);
     setSelectedDocumentId(null);
-    setSearchResults(null);
-    setSearchErrorMessage('');
-    setSearchKeyword('');
     setMenuState(null);
     setEditingState(null);
+
+    if (normalizedSearchKeyword === '') {
+      setSearchResults(null);
+      setSearchErrorMessage('');
+      return;
+    }
+
+    if (searchScope === 'current_folder') {
+      setSearchResults(null);
+      setSearchErrorMessage('');
+    }
   }
 
   function handleChangeSearchKeyword(value: string) {
     setSearchErrorMessage('');
     setSearchKeyword(value);
+  }
+
+  function handleChangeSearchScope(scope: SearchScope) {
+    if (scope === searchScope) {
+      return;
+    }
+
+    cancelActiveSearchRequest(activeSearchRequestControllerRef);
+    setIsSearchingDocuments(false);
+    setSearchResults(null);
+    setSearchErrorMessage('');
+    setSearchScope(scope);
   }
 
   function handleChangeDocumentSortMode(sortMode: DocumentSortMode) {
@@ -513,11 +541,13 @@ export function useDashboardHome() {
         await deleteFolder(target.id);
         setFolders((currentFolders) => currentFolders.filter((folder) => folder.id !== target.id));
         if (selectedFolderId === target.id) {
-          setSearchResults(null);
-          setSearchErrorMessage('');
-          setSearchKeyword('');
           setSelectedFolderId(null);
           setSelectedDocumentId(null);
+          if (searchScope === 'current_folder') {
+            setSearchResults(null);
+            setSearchErrorMessage('');
+            setSearchKeyword('');
+          }
         }
         setDeleteState(null);
         toast({ description: `已删除文件夹「${target.name}」`, variant: 'destructive' });
@@ -552,8 +582,10 @@ export function useDashboardHome() {
     folders,
     visibleDocuments,
     filteredDocuments,
-    currentFolderDocumentCount: currentFolderDocuments.length,
+    documentPanelTitle,
+    documentPanelTotalCount,
     documentSortMode,
+    searchScope,
     searchKeyword,
     searchErrorMessage,
     selectedFolderId,
@@ -572,6 +604,7 @@ export function useDashboardHome() {
     isSearchingDocuments,
     isSearchPending,
     searchResultCount,
+    isGlobalSearchActive,
     folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
     documentMenuId: menuState?.type === 'document' ? menuState.id : null,
     editingFolderId: editingState?.type === 'folder' ? editingState.id : null,
@@ -585,6 +618,7 @@ export function useDashboardHome() {
     handleSelectFolder,
     handleSelectDocument,
     handleChangeSearchKeyword,
+    handleChangeSearchScope,
     handleChangeDocumentSortMode,
     handleClearSearchKeyword,
     handleOpenFolderMenu,

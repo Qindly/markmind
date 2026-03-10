@@ -476,7 +476,7 @@
 }
 ```
 
-### 搜索当前目录文档
+### 搜索文档
 - **请求方式**：GET
 - **路由**：`/api/v1/documents/search`
 - **是否需要鉴权**：是
@@ -487,11 +487,14 @@
 |--------|------|------|------|------|
 | Authorization | header | string | 是 | `Bearer <access_token>` |
 | keyword | query | string | 是 | 搜索关键字，会同时匹配文档标题和正文内容 |
-| folder_id | query | number | 否 | 当前目录 ID；不传表示搜索根目录 |
+| scope | query | string | 否 | 搜索范围，支持 `current_folder` 和 `global`；默认 `current_folder` |
+| folder_id | query | number | 否 | 当前目录 ID；仅当 `scope=current_folder` 时生效，不传表示搜索根目录 |
 
 - **返回说明**：
+  - `scope=current_folder` 时只搜索当前目录；`scope=global` 时搜索当前用户全部文档。
   - `snippet` 为服务端生成的正文纯文本摘要；正文命中时优先返回命中附近片段，只有标题命中时回退到正文开头摘要。
   - `match_sources` 为命中来源标签列表，只会返回 `title`、`content` 两种值；如果标题和正文都命中，会按 `["title", "content"]` 顺序同时返回。
+  - `folder_name` 为结果所属目录名称；根目录统一返回 `根目录`。
 
 #### 返回样例
 
@@ -505,6 +508,7 @@
         {
           "id": 11,
           "folder_id": 3,
+          "folder_name": "前端实习",
           "title": "React Hooks 速记",
           "snippet": "...React Router 的嵌套路由需要和 Outlet 配合使用，才能让页面结构更清晰。",
           "match_sources": ["title", "content"],

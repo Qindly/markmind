@@ -50,7 +50,7 @@ export function DashboardPage() {
             ) : null}
 
             <DocumentListPanel
-              currentFolderName={dashboard.selectedFolderName}
+              isGlobalSearchActive={dashboard.isGlobalSearchActive}
               documentMenuId={dashboard.documentMenuId}
               documentSortMode={dashboard.documentSortMode}
               documents={dashboard.filteredDocuments}
@@ -65,6 +65,7 @@ export function DashboardPage() {
               onChangeDocumentSortMode={dashboard.handleChangeDocumentSortMode}
               onChangeEditingValue={dashboard.handleChangeEditingValue}
               onChangeSearchKeyword={dashboard.handleChangeSearchKeyword}
+              onChangeSearchScope={dashboard.handleChangeSearchScope}
               onCloseDocumentMenu={dashboard.handleCloseDocumentMenu}
               onClearSearch={dashboard.handleClearSearchKeyword}
               onCreateDocument={dashboard.handleCreateDocument}
@@ -74,11 +75,13 @@ export function DashboardPage() {
               onSelectDocument={dashboard.handleSelectDocument}
               onStartDocumentEditing={dashboard.handleStartDocumentEditing}
               onSubmitEditing={dashboard.handleSubmitEditing}
+              panelTitle={dashboard.documentPanelTitle}
               searchErrorMessage={dashboard.searchErrorMessage}
               searchKeyword={dashboard.searchKeyword}
               searchResultCount={dashboard.searchResultCount}
+              searchScope={dashboard.searchScope}
               selectedDocumentId={dashboard.selectedDocumentId}
-              totalDocumentCount={dashboard.currentFolderDocumentCount}
+              totalDocumentCount={dashboard.documentPanelTotalCount}
             />
           </div>
         </div>

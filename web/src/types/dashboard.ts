@@ -15,8 +15,10 @@ export interface DocumentItem {
 }
 
 export type SearchMatchSource = 'title' | 'content';
+export type SearchScope = 'current_folder' | 'global';
 
 export interface SearchDocumentItem extends DocumentItem {
+  folder_name: string;
   snippet: string;
   match_sources: SearchMatchSource[];
 }
@@ -74,6 +76,7 @@ export interface DeleteDocumentResponseData {
 
 export interface SearchDocumentsRequest {
   keyword: string;
+  scope: SearchScope;
   folder_id?: number | null;
 }
 

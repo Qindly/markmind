@@ -28,11 +28,22 @@ type UpdateDocumentContentResponse struct {
 	Document DocumentDetailResponseData `json:"document"`
 }
 
-// SearchDocumentsRequest - 按关键字搜索当前目录文档的请求参数。
+// SearchDocumentsRequest - 按关键字搜索文档的请求参数。
 type SearchDocumentsRequest struct {
 	Keyword  string
 	FolderID *int64
+	Scope    DocumentSearchScope
 }
+
+// DocumentSearchScope - 表示文档搜索的范围。
+type DocumentSearchScope string
+
+const (
+	// DocumentSearchScopeCurrentFolder - 表示只搜索当前目录。
+	DocumentSearchScopeCurrentFolder DocumentSearchScope = "current_folder"
+	// DocumentSearchScopeGlobal - 表示搜索当前用户的全部文档。
+	DocumentSearchScopeGlobal DocumentSearchScope = "global"
+)
 
 // DocumentSearchMatchSource - 文档搜索结果命中来源类型。
 type DocumentSearchMatchSource string
@@ -48,6 +59,7 @@ const (
 type DocumentSearchSummaryResponse struct {
 	ID           int64                       `json:"id"`
 	FolderID     *int64                      `json:"folder_id"`
+	FolderName   string                      `json:"folder_name"`
 	Title        string                      `json:"title"`
 	Snippet      string                      `json:"snippet"`
 	MatchSources []DocumentSearchMatchSource `json:"match_sources"`

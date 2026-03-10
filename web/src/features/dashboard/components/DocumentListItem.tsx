@@ -6,6 +6,7 @@ import type { DashboardDocumentListItem, SearchMatchSource } from '../../../type
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';
 import { DashboardListItem } from './DashboardListItem';
 import { DashboardItemMenu } from './DashboardItemMenu';
+import { DocumentSearchFolderTag } from './DocumentSearchFolderTag';
 import { DocumentSearchMatchTags } from './DocumentSearchMatchTags';
 
 export interface DocumentListItemProps {
@@ -16,6 +17,7 @@ export interface DocumentListItemProps {
   editingValue: string;
   isSaving: boolean;
   searchKeyword: string;
+  showFolderName: boolean;
   onSelect: () => void;
   onMenuOpenChange: (open: boolean) => void;
   onMove: () => void;
@@ -48,6 +50,10 @@ function getSearchMatchSources(document: DashboardDocumentListItem): SearchMatch
   return 'match_sources' in document ? document.match_sources : [];
 }
 
+function getSearchFolderName(document: DashboardDocumentListItem): string {
+  return 'folder_name' in document ? document.folder_name : '';
+}
+
 /**
  * DocumentListItem - 展示单个文档的选中、搜索摘要、菜单与行内编辑状态。
  * 参数 props: 文档数据与交互回调。
@@ -61,6 +67,7 @@ export function DocumentListItem({
   editingValue,
   isSaving,
   searchKeyword,
+  showFolderName,
   onSelect,
   onMenuOpenChange,
   onMove,
@@ -73,6 +80,7 @@ export function DocumentListItem({
   const normalizedKeyword = searchKeyword.trim();
   const snippet = getSearchSnippet(document);
   const matchSources = getSearchMatchSources(document);
+  const folderName = getSearchFolderName(document);
   const shouldShowSnippet = normalizedKeyword !== '' && snippet !== '';
   const matchedClassName = isSelected
     ? 'rounded bg-[rgba(255,255,255,0.18)] px-1 text-inherit'
@@ -132,7 +140,10 @@ export function DocumentListItem({
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <DocumentSearchMatchTags isSelected={isSelected} matchSources={matchSources} />
+          <div className="flex flex-wrap items-center gap-2">
+            {showFolderName ? <DocumentSearchFolderTag folderName={folderName} isSelected={isSelected} /> : null}
+            <DocumentSearchMatchTags isSelected={isSelected} matchSources={matchSources} />
+          </div>
           <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
             更新时间：{formatUpdatedAt(document.updated_at)}
           </p>

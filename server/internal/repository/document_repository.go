@@ -17,7 +17,7 @@ import (
 // DocumentRepository - 文档数据访问接口。
 type DocumentRepository interface {
 	ListDocumentsByUserID(ctx context.Context, userID int64) ([]model.Document, error)
-	SearchDocumentsByKeyword(ctx context.Context, userID int64, folderID *int64, keyword string) ([]model.Document, error)
+	SearchDocumentsByKeyword(ctx context.Context, userID int64, folderID *int64, keyword string, searchAll bool) ([]model.Document, error)
 	CreateDocument(ctx context.Context, document model.Document) (*model.Document, error)
 	CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error)
 	FindDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) (*model.Document, error)
@@ -89,17 +89,28 @@ func (repository *documentRepository) SearchDocumentsByKeyword(
 	userID int64,
 	folderID *int64,
 	keyword string,
+	searchAll bool,
 ) ([]model.Document, error) {
 	queryArgs := []any{userID, "%" + keyword + "%"}
 	query := `
 		SELECT id, user_id, folder_id, title, content, created_at, updated_at
 		FROM documents
-		WHERE user_id = $1 AND folder_id IS NULL
+		WHERE user_id = $1
 			AND (title ILIKE $2 OR content ILIKE $2)
 		ORDER BY updated_at DESC, id DESC
 	`
 
-	if folderID != nil {
+	if !searchAll {
+		query = `
+			SELECT id, user_id, folder_id, title, content, created_at, updated_at
+			FROM documents
+			WHERE user_id = $1 AND folder_id IS NULL
+				AND (title ILIKE $2 OR content ILIKE $2)
+			ORDER BY updated_at DESC, id DESC
+		`
+	}
+
+	if !searchAll && folderID != nil {
 		query = `
 			SELECT id, user_id, folder_id, title, content, created_at, updated_at
 			FROM documents

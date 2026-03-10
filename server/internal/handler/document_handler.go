@@ -48,7 +48,7 @@ func (handler *DocumentHandler) GetDocumentDetail(ctx *gin.Context) {
 	WriteSuccess(ctx, http.StatusOK, response)
 }
 
-// SearchDocuments - 搜索当前用户当前目录内标题或正文命中的文档。
+// SearchDocuments - 搜索当前用户指定范围内标题或正文命中的文档。
 // 参数 ctx: Gin 请求上下文。
 func (handler *DocumentHandler) SearchDocuments(ctx *gin.Context) {
 	userID, exists := middleware.GetCurrentUserID(ctx)
@@ -59,6 +59,11 @@ func (handler *DocumentHandler) SearchDocuments(ctx *gin.Context) {
 
 	request := dto.SearchDocumentsRequest{
 		Keyword: ctx.Query("keyword"),
+		Scope:   dto.DocumentSearchScope(ctx.DefaultQuery("scope", string(dto.DocumentSearchScopeCurrentFolder))),
+	}
+	if !isValidDocumentSearchScope(request.Scope) {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return
 	}
 
 	folderID, ok := parseOptionalFolderID(ctx, "folder_id")
@@ -130,4 +135,8 @@ func parseOptionalFolderID(ctx *gin.Context, queryKey string) (*int64, bool) {
 	}
 
 	return &folderID, true
+}
+
+func isValidDocumentSearchScope(scope dto.DocumentSearchScope) bool {
+	return scope == dto.DocumentSearchScopeCurrentFolder || scope == dto.DocumentSearchScopeGlobal
 }

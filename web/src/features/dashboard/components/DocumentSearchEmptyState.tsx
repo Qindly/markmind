@@ -1,21 +1,27 @@
 ﻿// DocumentSearchEmptyState.tsx - 渲染文档搜索无结果时的空状态
+import type { SearchScope } from '../../../types/dashboard';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { getSearchScopeLabel } from '../documentListPanelLayout';
 
 export interface DocumentSearchEmptyStateProps {
+  searchScope: SearchScope;
   searchKeyword: string;
   onClearSearch: () => void;
 }
 
 /**
- * DocumentSearchEmptyState - 展示当前目录搜索无结果时的提示与清空入口。
- * 参数 props: 当前关键字与清空回调。
+ * DocumentSearchEmptyState - 展示搜索无结果时的提示与清空入口。
+ * 参数 props: 当前范围、关键字与清空回调。
  * 返回值：搜索空状态 JSX。
  */
 export function DocumentSearchEmptyState({
+  searchScope,
   searchKeyword,
   onClearSearch,
 }: DocumentSearchEmptyStateProps) {
+  const searchScopeLabel = getSearchScopeLabel(searchScope);
+
   return (
     <EmptyState
       action={
@@ -23,7 +29,7 @@ export function DocumentSearchEmptyState({
           清空搜索
         </Button>
       }
-      description={`当前目录中没有标题或正文包含“${searchKeyword.trim()}”的文档，试试更换关键字或直接查看全部文档。`}
+      description={`${searchScopeLabel}中没有标题或正文包含“${searchKeyword.trim()}”的文档，试试更换关键字或切换搜索范围。`}
       title="没有匹配结果"
     />
   );

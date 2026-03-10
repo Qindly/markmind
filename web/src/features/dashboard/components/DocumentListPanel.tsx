@@ -1,7 +1,7 @@
 ﻿// DocumentListPanel.tsx - 渲染首页右侧文档列表与创建入口
 import { Card, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
-import type { DashboardDocumentListItem, DocumentItem, DocumentSortMode } from '../../../types/dashboard';
+import type { DashboardDocumentListItem, DocumentItem, DocumentSortMode, SearchScope } from '../../../types/dashboard';
 import {
   DOCUMENT_LIST_ROW_HEIGHT,
   DOCUMENT_LIST_VIRTUAL_THRESHOLD,
@@ -14,10 +14,12 @@ import { DocumentListItem } from './DocumentListItem';
 import { DocumentListToolbar } from './DocumentListToolbar';
 
 export interface DocumentListPanelProps {
-  currentFolderName: string;
+  panelTitle: string;
   documents: DashboardDocumentListItem[];
   totalDocumentCount: number;
   documentSortMode: DocumentSortMode;
+  searchScope: SearchScope;
+  isGlobalSearchActive: boolean;
   searchKeyword: string;
   isSearchPending: boolean;
   searchResultCount: number | null;
@@ -38,6 +40,7 @@ export interface DocumentListPanelProps {
   onStartDocumentEditing: (document: DocumentItem) => void;
   onRequestDeleteDocument: (document: DocumentItem) => void;
   onChangeSearchKeyword: (value: string) => void;
+  onChangeSearchScope: (searchScope: SearchScope) => void;
   onChangeDocumentSortMode: (sortMode: DocumentSortMode) => void;
   onClearSearch: () => void;
   onChangeEditingValue: (value: string) => void;
@@ -51,10 +54,12 @@ export interface DocumentListPanelProps {
  * 返回值：文档面板 JSX 结构。
  */
 export function DocumentListPanel({
-  currentFolderName,
+  panelTitle,
   documents,
   totalDocumentCount,
   documentSortMode,
+  searchScope,
+  isGlobalSearchActive,
   searchKeyword,
   isSearchPending,
   searchResultCount,
@@ -75,6 +80,7 @@ export function DocumentListPanel({
   onStartDocumentEditing,
   onRequestDeleteDocument,
   onChangeSearchKeyword,
+  onChangeSearchScope,
   onChangeDocumentSortMode,
   onClearSearch,
   onChangeEditingValue,
@@ -104,17 +110,19 @@ export function DocumentListPanel({
               documentSortMode={documentSortMode}
               isCreatingDocument={isCreatingDocument}
               isSearchPending={isSearchPending}
+              onChangeSearchScope={onChangeSearchScope}
               onChangeDocumentSortMode={onChangeDocumentSortMode}
               onChangeSearchKeyword={onChangeSearchKeyword}
               onClearSearch={onClearSearch}
               onCreateDocument={onCreateDocument}
               searchResultCount={searchResultCount}
               searchKeyword={searchKeyword}
+              searchScope={searchScope}
             />
           }
-          description={getDocumentListDescription(totalDocumentCount, hasSearchKeyword, isSearchPending)}
+          description={getDocumentListDescription(totalDocumentCount, hasSearchKeyword, isSearchPending, searchScope)}
           eyebrow="Dashboard"
-          title={currentFolderName}
+          title={panelTitle}
         />
       </CardHeader>
 
@@ -148,11 +156,13 @@ export function DocumentListPanel({
             onMove={() => onRequestMoveDocument(document)}
             onSelect={() => onSelectDocument(document.id)}
             searchKeyword={searchKeyword}
+            showFolderName={isGlobalSearchActive}
             onStartEdit={() => onStartDocumentEditing(document)}
             onSubmitEdit={onSubmitEditing}
           />
         )}
         renderedDocuments={renderedDocuments}
+        searchScope={searchScope}
         searchErrorMessage={searchErrorMessage}
         searchKeyword={searchKeyword}
         totalDocumentCount={totalDocumentCount}

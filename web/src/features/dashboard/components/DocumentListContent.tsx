@@ -3,13 +3,15 @@ import type { CSSProperties, ReactNode, RefObject } from 'react';
 
 import { CardContent } from '../../../components/ui/Card';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import type { DashboardDocumentListItem } from '../../../types/dashboard';
+import type { DashboardDocumentListItem, SearchScope } from '../../../types/dashboard';
+import { getSearchScopeLabel } from '../documentListPanelLayout';
 import { DocumentSearchEmptyState } from './DocumentSearchEmptyState';
 
 export interface DocumentListContentProps {
   containerRef: RefObject<HTMLDivElement>;
   isLoading: boolean;
   isSearchingDocuments: boolean;
+  searchScope: SearchScope;
   searchErrorMessage: string;
   totalDocumentCount: number;
   filteredDocuments: DashboardDocumentListItem[];
@@ -29,6 +31,7 @@ export function DocumentListContent({
   containerRef,
   isLoading,
   isSearchingDocuments,
+  searchScope,
   searchErrorMessage,
   totalDocumentCount,
   filteredDocuments,
@@ -38,24 +41,27 @@ export function DocumentListContent({
   renderDocumentItem,
   onClearSearch,
 }: DocumentListContentProps) {
+  const hasSearchKeyword = searchKeyword.trim() !== '';
+  const searchScopeLabel = getSearchScopeLabel(searchScope);
+
   return (
     <CardContent className="flex-1 overflow-y-auto p-6 pt-6" ref={containerRef}>
       {isLoading ? <EmptyState description="正在加载你的文档列表..." /> : null}
 
       {!isLoading && isSearchingDocuments ? (
-        <EmptyState description="正在搜索当前目录中的标题和正文..." title="搜索中" />
-      ) : null}
-
-      {!isLoading && !isSearchingDocuments && totalDocumentCount === 0 ? (
-        <EmptyState description="这个目录还没有文档，试试创建第一篇空文档吧。" title="还没有文档" />
+        <EmptyState description={`正在搜索${searchScopeLabel}中的标题和正文...`} title="搜索中" />
       ) : null}
 
       {!isLoading && !isSearchingDocuments && searchErrorMessage ? (
         <EmptyState description={searchErrorMessage} title="搜索失败" />
       ) : null}
 
-      {!isLoading && !isSearchingDocuments && !searchErrorMessage && totalDocumentCount > 0 && filteredDocuments.length === 0 ? (
-        <DocumentSearchEmptyState onClearSearch={onClearSearch} searchKeyword={searchKeyword} />
+      {!isLoading && !isSearchingDocuments && !searchErrorMessage && hasSearchKeyword && filteredDocuments.length === 0 ? (
+        <DocumentSearchEmptyState onClearSearch={onClearSearch} searchKeyword={searchKeyword} searchScope={searchScope} />
+      ) : null}
+
+      {!isLoading && !isSearchingDocuments && !hasSearchKeyword && totalDocumentCount === 0 ? (
+        <EmptyState description="这个目录还没有文档，试试创建第一篇空文档吧。" title="还没有文档" />
       ) : null}
 
       {!isLoading && !isSearchingDocuments && filteredDocuments.length > 0 ? (

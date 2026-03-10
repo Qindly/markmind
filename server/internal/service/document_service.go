@@ -24,6 +24,11 @@ type documentService struct {
 	documentRepository repository.DocumentRepository
 }
 
+const (
+	rootFolderDisplayName    = "根目录"
+	unknownFolderDisplayName = "未知目录"
+)
+
 // NewDocumentService - 创建文档详情与正文编辑服务实现。
 // 参数 folderRepository: 文件夹仓储。
 // 参数 documentRepository: 文档仓储。
@@ -67,17 +72,41 @@ func (service *documentService) SearchDocuments(
 		return nil, appconst.ErrInvalidParams
 	}
 
-	if request.FolderID != nil {
+	if request.Scope != dto.DocumentSearchScopeCurrentFolder && request.Scope != dto.DocumentSearchScopeGlobal {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	currentFolderName := rootFolderDisplayName
+	folderNameMap := make(map[int64]string)
+
+	if request.Scope == dto.DocumentSearchScopeCurrentFolder && request.FolderID != nil {
 		if *request.FolderID <= 0 {
 			return nil, appconst.ErrInvalidParams
 		}
 
-		if _, err := service.folderRepository.FindFolderByIDAndUserID(ctx, *request.FolderID, userID); err != nil {
+		folder, err := service.folderRepository.FindFolderByIDAndUserID(ctx, *request.FolderID, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		currentFolderName = folder.Name
+	}
+
+	if request.Scope == dto.DocumentSearchScopeGlobal {
+		var err error
+		folderNameMap, err = service.listFolderNamesByUserID(ctx, userID)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	documents, err := service.documentRepository.SearchDocumentsByKeyword(ctx, userID, request.FolderID, keyword)
+	documents, err := service.documentRepository.SearchDocumentsByKeyword(
+		ctx,
+		userID,
+		request.FolderID,
+		keyword,
+		request.Scope == dto.DocumentSearchScopeGlobal,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +115,10 @@ func (service *documentService) SearchDocuments(
 		Documents: make([]dto.DocumentSearchSummaryResponse, 0, len(documents)),
 	}
 	for _, document := range documents {
-		response.Documents = append(response.Documents, toDocumentSearchSummary(document, keyword))
+		response.Documents = append(
+			response.Documents,
+			toDocumentSearchSummary(document, keyword, resolveSearchResultFolderName(document.FolderID, currentFolderName, folderNameMap)),
+		)
 	}
 
 	return response, nil
@@ -128,12 +160,13 @@ func toDocumentDetail(document model.Document) dto.DocumentDetailResponseData {
 	}
 }
 
-func toDocumentSearchSummary(document model.Document, keyword string) dto.DocumentSearchSummaryResponse {
+func toDocumentSearchSummary(document model.Document, keyword string, folderName string) dto.DocumentSearchSummaryResponse {
 	matchSources := util.BuildSearchMatchSources(document.Title, document.Content, keyword)
 
 	return dto.DocumentSearchSummaryResponse{
 		ID:           document.ID,
 		FolderID:     document.FolderID,
+		FolderName:   folderName,
 		Title:        document.Title,
 		Snippet:      util.BuildSearchSnippet(document.Content, keyword),
 		MatchSources: toDocumentSearchMatchSources(matchSources),
@@ -153,4 +186,34 @@ func toDocumentSearchMatchSources(matchSources []util.SearchMatchSource) []dto.D
 	}
 
 	return responseSources
+}
+
+func (service *documentService) listFolderNamesByUserID(ctx context.Context, userID int64) (map[int64]string, error) {
+	folders, err := service.folderRepository.ListFoldersByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	folderNameMap := make(map[int64]string, len(folders))
+	for _, folder := range folders {
+		folderNameMap[folder.ID] = folder.Name
+	}
+
+	return folderNameMap, nil
+}
+
+func resolveSearchResultFolderName(folderID *int64, currentFolderName string, folderNameMap map[int64]string) string {
+	if folderID == nil {
+		return rootFolderDisplayName
+	}
+
+	if currentFolderName != "" && currentFolderName != rootFolderDisplayName {
+		return currentFolderName
+	}
+
+	if folderName, exists := folderNameMap[*folderID]; exists {
+		return folderName
+	}
+
+	return unknownFolderDisplayName
 }

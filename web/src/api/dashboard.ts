@@ -29,8 +29,8 @@ export async function fetchDashboard(): Promise<DashboardData> {
   return data.data;
 }
 
-// searchDocuments - 搜索当前目录标题或正文命中的文档。
-// 参数 payload: 搜索关键字与当前目录。
+// searchDocuments - 按指定范围搜索标题或正文命中的文档。
+// 参数 payload: 搜索关键字、搜索范围与当前目录。
 // 参数 options: 可选的取消请求配置。
 // 返回值：匹配到的文档摘要列表。
 export async function searchDocuments(
@@ -40,7 +40,10 @@ export async function searchDocuments(
   const { data } = await apiClient.get<ApiResponse<SearchDocumentsResponseData>>('/documents/search', {
     params: {
       keyword: payload.keyword,
-      ...(payload.folder_id === undefined || payload.folder_id === null ? {} : { folder_id: payload.folder_id }),
+      scope: payload.scope,
+      ...(payload.scope === 'current_folder' && payload.folder_id !== undefined && payload.folder_id !== null
+        ? { folder_id: payload.folder_id }
+        : {}),
     },
     signal: options?.signal,
   });
