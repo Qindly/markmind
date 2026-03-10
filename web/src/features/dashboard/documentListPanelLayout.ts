@@ -6,23 +6,19 @@ export const DOCUMENT_LIST_ROW_HEIGHT = DOCUMENT_LIST_ITEM_HEIGHT + DOCUMENT_LIS
 
 // getDocumentListDescription - 生成列表头部的结果描述文案。
 // 参数 totalDocumentCount: 当前目录文档总数。
-// 参数 filteredDocumentCount: 当前展示结果数量。
 // 参数 hasSearchKeyword: 是否已输入关键字。
-// 参数 isSearchingDocuments: 当前是否仍在搜索。
+// 参数 isSearchPending: 当前关键字是否仍在等待搜索结果。
 // 返回值：头部描述文案。
 export function getDocumentListDescription(
   totalDocumentCount: number,
-  filteredDocumentCount: number,
   hasSearchKeyword: boolean,
-  isSearchingDocuments: boolean,
+  isSearchPending: boolean,
 ): string {
-  if (hasSearchKeyword && isSearchingDocuments) {
+  if (hasSearchKeyword && isSearchPending) {
     return `当前目录共 ${totalDocumentCount} 篇文档，正在搜索标题和正文...`;
   }
 
-  return hasSearchKeyword
-    ? `当前目录共 ${totalDocumentCount} 篇文档，匹配到 ${filteredDocumentCount} 篇。`
-    : `当前共展示 ${totalDocumentCount} 篇文档。`;
+  return hasSearchKeyword ? `当前目录共 ${totalDocumentCount} 篇文档。` : `当前共展示 ${totalDocumentCount} 篇文档。`;
 }
 
 // getDocumentListHeight - 计算当前列表的理论总高度。

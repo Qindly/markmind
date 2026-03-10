@@ -110,6 +110,10 @@ export function useDashboardHome() {
   const [isSearchingDocuments, setIsSearchingDocuments] = useState(false);
   const normalizedSearchKeyword = searchKeyword.trim();
   const debouncedSearchKeyword = useDebouncedValue(normalizedSearchKeyword, DOCUMENT_SEARCH_DEBOUNCE_MS);
+  const isSearchPending =
+    normalizedSearchKeyword !== '' && (normalizedSearchKeyword !== debouncedSearchKeyword || isSearchingDocuments);
+  const searchResultCount =
+    normalizedSearchKeyword === '' || isSearchPending || searchErrorMessage !== '' ? null : (searchResults?.length ?? 0);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
@@ -566,6 +570,8 @@ export function useDashboardHome() {
     isDeletingDocument,
     isMovingDocument,
     isSearchingDocuments,
+    isSearchPending,
+    searchResultCount,
     folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
     documentMenuId: menuState?.type === 'document' ? menuState.id : null,
     editingFolderId: editingState?.type === 'folder' ? editingState.id : null,

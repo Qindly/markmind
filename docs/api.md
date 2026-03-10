@@ -489,7 +489,9 @@
 | keyword | query | string | 是 | 搜索关键字，会同时匹配文档标题和正文内容 |
 | folder_id | query | number | 否 | 当前目录 ID；不传表示搜索根目录 |
 
-- **返回说明**：`snippet` 为服务端生成的正文纯文本摘要；正文命中时优先返回命中附近片段，只有标题命中时回退到正文开头摘要。
+- **返回说明**：
+  - `snippet` 为服务端生成的正文纯文本摘要；正文命中时优先返回命中附近片段，只有标题命中时回退到正文开头摘要。
+  - `match_sources` 为命中来源标签列表，只会返回 `title`、`content` 两种值；如果标题和正文都命中，会按 `["title", "content"]` 顺序同时返回。
 
 #### 返回样例
 
@@ -505,6 +507,7 @@
           "folder_id": 3,
           "title": "React Hooks 速记",
           "snippet": "...React Router 的嵌套路由需要和 Outlet 配合使用，才能让页面结构更清晰。",
+          "match_sources": ["title", "content"],
           "created_at": "2026-03-09T10:00:00Z",
           "updated_at": "2026-03-09T11:00:00Z"
         }

@@ -34,14 +34,25 @@ type SearchDocumentsRequest struct {
 	FolderID *int64
 }
 
+// DocumentSearchMatchSource - 文档搜索结果命中来源类型。
+type DocumentSearchMatchSource string
+
+const (
+	// DocumentSearchMatchSourceTitle - 表示关键字命中了文档标题。
+	DocumentSearchMatchSourceTitle DocumentSearchMatchSource = "title"
+	// DocumentSearchMatchSourceContent - 表示关键字命中了文档正文。
+	DocumentSearchMatchSourceContent DocumentSearchMatchSource = "content"
+)
+
 // DocumentSearchSummaryResponse - 文档搜索结果列表项。
 type DocumentSearchSummaryResponse struct {
-	ID        int64     `json:"id"`
-	FolderID  *int64    `json:"folder_id"`
-	Title     string    `json:"title"`
-	Snippet   string    `json:"snippet"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int64                       `json:"id"`
+	FolderID     *int64                      `json:"folder_id"`
+	Title        string                      `json:"title"`
+	Snippet      string                      `json:"snippet"`
+	MatchSources []DocumentSearchMatchSource `json:"match_sources"`
+	CreatedAt    time.Time                   `json:"created_at"`
+	UpdatedAt    time.Time                   `json:"updated_at"`
 }
 
 // SearchDocumentsResponse - 文档搜索返回数据。

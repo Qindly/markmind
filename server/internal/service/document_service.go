@@ -129,12 +129,28 @@ func toDocumentDetail(document model.Document) dto.DocumentDetailResponseData {
 }
 
 func toDocumentSearchSummary(document model.Document, keyword string) dto.DocumentSearchSummaryResponse {
+	matchSources := util.BuildSearchMatchSources(document.Title, document.Content, keyword)
+
 	return dto.DocumentSearchSummaryResponse{
-		ID:        document.ID,
-		FolderID:  document.FolderID,
-		Title:     document.Title,
-		Snippet:   util.BuildSearchSnippet(document.Content, keyword),
-		CreatedAt: document.CreatedAt,
-		UpdatedAt: document.UpdatedAt,
+		ID:           document.ID,
+		FolderID:     document.FolderID,
+		Title:        document.Title,
+		Snippet:      util.BuildSearchSnippet(document.Content, keyword),
+		MatchSources: toDocumentSearchMatchSources(matchSources),
+		CreatedAt:    document.CreatedAt,
+		UpdatedAt:    document.UpdatedAt,
 	}
+}
+
+func toDocumentSearchMatchSources(matchSources []util.SearchMatchSource) []dto.DocumentSearchMatchSource {
+	if len(matchSources) == 0 {
+		return nil
+	}
+
+	responseSources := make([]dto.DocumentSearchMatchSource, 0, len(matchSources))
+	for _, matchSource := range matchSources {
+		responseSources = append(responseSources, dto.DocumentSearchMatchSource(matchSource))
+	}
+
+	return responseSources
 }

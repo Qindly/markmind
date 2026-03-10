@@ -2,10 +2,11 @@
 import { renderSearchHighlightedText } from '../documentSearchHighlight';
 
 import { cn } from '../../../lib/cn';
-import type { DashboardDocumentListItem } from '../../../types/dashboard';
+import type { DashboardDocumentListItem, SearchMatchSource } from '../../../types/dashboard';
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';
 import { DashboardListItem } from './DashboardListItem';
 import { DashboardItemMenu } from './DashboardItemMenu';
+import { DocumentSearchMatchTags } from './DocumentSearchMatchTags';
 
 export interface DocumentListItemProps {
   document: DashboardDocumentListItem;
@@ -43,6 +44,10 @@ function getSearchSnippet(document: DashboardDocumentListItem): string {
   return 'snippet' in document ? document.snippet : '';
 }
 
+function getSearchMatchSources(document: DashboardDocumentListItem): SearchMatchSource[] {
+  return 'match_sources' in document ? document.match_sources : [];
+}
+
 /**
  * DocumentListItem - 展示单个文档的选中、搜索摘要、菜单与行内编辑状态。
  * 参数 props: 文档数据与交互回调。
@@ -67,6 +72,7 @@ export function DocumentListItem({
 }: DocumentListItemProps) {
   const normalizedKeyword = searchKeyword.trim();
   const snippet = getSearchSnippet(document);
+  const matchSources = getSearchMatchSources(document);
   const shouldShowSnippet = normalizedKeyword !== '' && snippet !== '';
   const matchedClassName = isSelected
     ? 'rounded bg-[rgba(255,255,255,0.18)] px-1 text-inherit'
@@ -125,9 +131,12 @@ export function DocumentListItem({
           </p>
         ) : null}
 
-        <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
-          更新时间：{formatUpdatedAt(document.updated_at)}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <DocumentSearchMatchTags isSelected={isSelected} matchSources={matchSources} />
+          <p className={cn('text-sm', isSelected ? 'text-[var(--color-option-selected-muted)]' : 'text-[var(--color-text-muted)]')}>
+            更新时间：{formatUpdatedAt(document.updated_at)}
+          </p>
+        </div>
       </div>
     </DashboardListItem>
   );

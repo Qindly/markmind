@@ -7,7 +7,8 @@ import { DocumentSortToggle } from './DocumentSortToggle';
 export interface DocumentListToolbarProps {
   documentSortMode: DocumentSortMode;
   searchKeyword: string;
-  isSearchingDocuments: boolean;
+  isSearchPending: boolean;
+  searchResultCount: number | null;
   isCreatingDocument: boolean;
   onChangeSearchKeyword: (value: string) => void;
   onChangeDocumentSortMode: (sortMode: DocumentSortMode) => void;
@@ -23,14 +24,16 @@ export interface DocumentListToolbarProps {
 export function DocumentListToolbar({
   documentSortMode,
   searchKeyword,
-  isSearchingDocuments,
+  isSearchPending,
+  searchResultCount,
   isCreatingDocument,
   onChangeSearchKeyword,
   onChangeDocumentSortMode,
   onClearSearch,
   onCreateDocument,
 }: DocumentListToolbarProps) {
-  const hasSearchKeyword = searchKeyword !== '';
+  const hasSearchKeyword = searchKeyword.trim() !== '';
+  const searchSummaryText = !hasSearchKeyword ? null : isSearchPending ? '搜索中...' : searchResultCount === null ? null : `共 ${searchResultCount} 条结果`;
 
   return (
     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -41,7 +44,11 @@ export function DocumentListToolbar({
         value={searchKeyword}
       />
       <DocumentSortToggle onChangeSortMode={onChangeDocumentSortMode} sortMode={documentSortMode} />
-      {isSearchingDocuments ? <span className="text-sm text-[var(--color-text-secondary)]">搜索中...</span> : null}
+      {searchSummaryText ? (
+        <span className="inline-flex h-10 items-center rounded-xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-4 text-sm text-[var(--color-text-secondary)]">
+          {searchSummaryText}
+        </span>
+      ) : null}
       {hasSearchKeyword ? (
         <Button className="h-10 w-full px-4 sm:w-auto" onClick={onClearSearch} type="button" variant="secondary">
           清空搜索

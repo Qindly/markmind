@@ -19,6 +19,8 @@ export interface DocumentListPanelProps {
   totalDocumentCount: number;
   documentSortMode: DocumentSortMode;
   searchKeyword: string;
+  isSearchPending: boolean;
+  searchResultCount: number | null;
   isSearchingDocuments: boolean;
   searchErrorMessage: string;
   selectedDocumentId: number | null;
@@ -54,6 +56,8 @@ export function DocumentListPanel({
   totalDocumentCount,
   documentSortMode,
   searchKeyword,
+  isSearchPending,
+  searchResultCount,
   isSearchingDocuments,
   searchErrorMessage,
   selectedDocumentId,
@@ -99,15 +103,16 @@ export function DocumentListPanel({
             <DocumentListToolbar
               documentSortMode={documentSortMode}
               isCreatingDocument={isCreatingDocument}
-              isSearchingDocuments={isSearchingDocuments}
+              isSearchPending={isSearchPending}
               onChangeDocumentSortMode={onChangeDocumentSortMode}
               onChangeSearchKeyword={onChangeSearchKeyword}
               onClearSearch={onClearSearch}
               onCreateDocument={onCreateDocument}
+              searchResultCount={searchResultCount}
               searchKeyword={searchKeyword}
             />
           }
-          description={getDocumentListDescription(totalDocumentCount, documents.length, hasSearchKeyword, isSearchingDocuments)}
+          description={getDocumentListDescription(totalDocumentCount, hasSearchKeyword, isSearchPending)}
           eyebrow="Dashboard"
           title={currentFolderName}
         />

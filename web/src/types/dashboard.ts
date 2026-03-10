@@ -14,8 +14,11 @@ export interface DocumentItem {
   updated_at: string;
 }
 
+export type SearchMatchSource = 'title' | 'content';
+
 export interface SearchDocumentItem extends DocumentItem {
   snippet: string;
+  match_sources: SearchMatchSource[];
 }
 
 export type DashboardDocumentListItem = DocumentItem | SearchDocumentItem;
