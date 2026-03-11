@@ -88,7 +88,13 @@ export function DocumentListPanel({
   onCancelEditing,
 }: DocumentListPanelProps) {
   const hasSearchKeyword = searchKeyword.trim() !== '';
-  const isVirtualListEnabled = !isLoading && editingDocumentId === null && documents.length > DOCUMENT_LIST_VIRTUAL_THRESHOLD;
+  // 搜索结果卡片会因为摘要和标签变成可变高度，固定行高虚拟列表在这里会算错滚动占位。
+  // 因此只在普通列表模式下启用虚拟列表，搜索时统一回退为全量渲染。
+  const isVirtualListEnabled =
+    !isLoading &&
+    !hasSearchKeyword &&
+    editingDocumentId === null &&
+    documents.length > DOCUMENT_LIST_VIRTUAL_THRESHOLD;
   const { containerRef, startIndex, endIndex } = useVirtualListWindow({
     enabled: isVirtualListEnabled,
     itemCount: documents.length,
