@@ -91,7 +91,10 @@ func (repository *documentRepository) SearchDocumentsByKeyword(
 	keyword string,
 	searchAll bool,
 ) ([]model.Document, error) {
-	queryArgs := []any{userID, "%" + keyword + "%"}
+	// 这里保留标题/正文包含关键字即命中的产品语义，
+	// 并依赖 documents.title / documents.content 上的 pg_trgm GIN 索引降低大数据量下的模糊搜索成本。
+	searchPattern := "%" + keyword + "%"
+	queryArgs := []any{userID, searchPattern}
 	query := `
 		SELECT id, user_id, folder_id, title, content, created_at, updated_at
 		FROM documents
@@ -118,7 +121,7 @@ func (repository *documentRepository) SearchDocumentsByKeyword(
 				AND (title ILIKE $3 OR content ILIKE $3)
 			ORDER BY updated_at DESC, id DESC
 		`
-		queryArgs = []any{userID, *folderID, "%" + keyword + "%"}
+		queryArgs = []any{userID, *folderID, searchPattern}
 	}
 
 	rows, err := repository.pool.Query(ctx, query, queryArgs...)

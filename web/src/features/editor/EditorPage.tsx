@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { InfoBlock } from '../../components/ui/InfoBlock';
 import { PageState } from '../../components/ui/PageState';
+import { EditorLeaveConfirmDialog } from './components/EditorLeaveConfirmDialog';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { useDocumentEditor } from './useDocumentEditor';
 import { useDocumentImageUpload } from './useDocumentImageUpload';
@@ -16,49 +17,75 @@ export function EditorPage() {
   const imageUpload = useDocumentImageUpload();
 
   if (editor.isLoading) {
-    return <PageState message="正在加载文档内容..." />;
+    return (
+      <>
+        <PageState message="正在加载文档内容..." />
+        <EditorLeaveConfirmDialog
+          isSaving={editor.isSaving}
+          onCancel={editor.handleCancelLeave}
+          onConfirm={editor.handleConfirmLeave}
+          open={editor.isLeaveDialogOpen}
+        />
+      </>
+    );
   }
 
   if (!editor.document) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
-        <Card className="w-full max-w-xl shadow-none">
-          <CardContent className="space-y-5 p-6 pt-6 sm:p-8 sm:pt-8">
-            <InfoBlock
-              compact
-              description={editor.errorMessage || '当前文档暂时无法打开，请返回首页后再试一次。'}
-              eyebrow="Editor"
-              title="文档暂时无法打开"
-              titleAs="h1"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button className="w-auto" onClick={editor.handleBack} type="button" variant="secondary">
-                返回首页
-              </Button>
-              <Button className="w-auto" onClick={editor.reloadDocument} type="button">
-                重新加载
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+      <>
+        <main className="flex min-h-screen items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
+          <Card className="w-full max-w-xl shadow-none">
+            <CardContent className="space-y-5 p-6 pt-6 sm:p-8 sm:pt-8">
+              <InfoBlock
+                compact
+                description={editor.errorMessage || '当前文档暂时无法打开，请返回首页后再试一次。'}
+                eyebrow="Editor"
+                title="文档暂时无法打开"
+                titleAs="h1"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button className="w-auto" onClick={editor.handleBack} type="button" variant="secondary">
+                  返回首页
+                </Button>
+                <Button className="w-auto" onClick={editor.reloadDocument} type="button">
+                  重新加载
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+        <EditorLeaveConfirmDialog
+          isSaving={editor.isSaving}
+          onCancel={editor.handleCancelLeave}
+          onConfirm={editor.handleConfirmLeave}
+          open={editor.isLeaveDialogOpen}
+        />
+      </>
     );
   }
 
   return (
-    <EditorWorkspace
-      content={editor.content}
-      document={editor.document}
-      errorMessage={editor.errorMessage}
-      isDirty={editor.isDirty}
-      isSaving={editor.isSaving}
-      onBack={editor.handleBack}
-      onContentChange={editor.handleContentChange}
-      onImagePaste={imageUpload.handleImagePaste}
-      onSave={editor.handleSave}
-      savePhase={editor.savePhase}
-      statusMessage={editor.statusMessage}
-      uploadingImageCount={imageUpload.uploadingImageCount}
-    />
+    <>
+      <EditorWorkspace
+        content={editor.content}
+        document={editor.document}
+        errorMessage={editor.errorMessage}
+        isDirty={editor.isDirty}
+        isSaving={editor.isSaving}
+        onBack={editor.handleBack}
+        onContentChange={editor.handleContentChange}
+        onImagePaste={imageUpload.handleImagePaste}
+        onSave={editor.handleSave}
+        savePhase={editor.savePhase}
+        statusMessage={editor.statusMessage}
+        uploadingImageCount={imageUpload.uploadingImageCount}
+      />
+      <EditorLeaveConfirmDialog
+        isSaving={editor.isSaving}
+        onCancel={editor.handleCancelLeave}
+        onConfirm={editor.handleConfirmLeave}
+        open={editor.isLeaveDialogOpen}
+      />
+    </>
   );
 }

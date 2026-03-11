@@ -118,7 +118,11 @@ export function useEditorToc({
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const headingElementsRef = useRef<HTMLElement[]>([]);
   const lastAppliedHashSignatureRef = useRef('');
+  const viewportSyncAnimationFrameRef = useRef(0);
+  const syncActiveHeadingFromViewportRef = useRef<() => void>(() => undefined);
+  const handleHashChangeRef = useRef<() => void>(() => undefined);
 
   const expandAncestorChain = useCallback(
     (headingId: string) => {
@@ -172,9 +176,7 @@ export function useEditorToc({
   );
 
   const scrollToHeading = useCallback((headingId: string, smooth: boolean) => {
-    const targetHeading = getPreviewHeadingElements(previewContainerRef.current).find(
-      (heading) => heading.id === headingId,
-    );
+    const targetHeading = headingElementsRef.current.find((heading) => heading.id === headingId);
     if (!targetHeading) {
       return false;
     }
@@ -215,6 +217,19 @@ export function useEditorToc({
   );
 
   useEffect(() => {
+    syncActiveHeadingFromViewportRef.current = () => {
+      if (viewportSyncAnimationFrameRef.current) {
+        cancelAnimationFrame(viewportSyncAnimationFrameRef.current);
+      }
+
+      viewportSyncAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        const nextActiveHeadingId = resolveViewportActiveHeadingId(headingElementsRef.current);
+        setActiveHeading(nextActiveHeadingId);
+      });
+    };
+  }, [setActiveHeading]);
+
+  useEffect(() => {
     setExpandedState((currentState) => {
       const nextState: Record<string, boolean> = {};
       let didChange = Object.keys(currentState).length !== expandableIds.length;
@@ -232,6 +247,7 @@ export function useEditorToc({
 
   useEffect(() => {
     if (headings.length === 0) {
+      headingElementsRef.current = [];
       lastAppliedHashSignatureRef.current = '';
       setActiveHeading(null, { syncHash: false });
       return;
@@ -252,6 +268,15 @@ export function useEditorToc({
       expandAncestors: true,
     });
   }, [activeHeadingId, headingIdKey, headingIdSet, headings, setActiveHeading]);
+
+  useEffect(() => {
+    headingElementsRef.current = getPreviewHeadingElements(previewContainerRef.current);
+    if (headingElementsRef.current.length === 0) {
+      return;
+    }
+
+    syncActiveHeadingFromViewportRef.current();
+  }, [headingIdKey, headings.length, html]);
 
   useEffect(() => {
     if (headings.length === 0) {
@@ -278,11 +303,7 @@ export function useEditorToc({
   }, [headingIdKey, headingIdSet, headings.length, html, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
-    if (headings.length === 0) {
-      return undefined;
-    }
-
-    function handleHashChange() {
+    handleHashChangeRef.current = () => {
       const hashHeadingId = getCurrentHashHeadingId();
       if (!hashHeadingId || !headingIdSet.has(hashHeadingId)) {
         return;
@@ -296,49 +317,36 @@ export function useEditorToc({
         syncHash: false,
         expandAncestors: true,
       });
+    };
+  }, [headingIdKey, headingIdSet, scrollToHeading, setActiveHeading]);
+
+  useEffect(() => {
+    function handleHashChange() {
+      handleHashChangeRef.current();
     }
 
     window.addEventListener('hashchange', handleHashChange);
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, [headingIdKey, headingIdSet, headings.length, scrollToHeading, setActiveHeading]);
+  }, []);
 
   useEffect(() => {
-    if (headings.length === 0) {
-      return undefined;
+    function handleViewportChange() {
+      syncActiveHeadingFromViewportRef.current();
     }
 
-    const headingElements = getPreviewHeadingElements(previewContainerRef.current);
-    if (headingElements.length === 0) {
-      return undefined;
-    }
-
-    let rafID = 0;
-
-    function syncActiveHeadingFromViewport() {
-      if (rafID) {
-        cancelAnimationFrame(rafID);
-      }
-
-      rafID = window.requestAnimationFrame(() => {
-        const nextActiveHeadingId = resolveViewportActiveHeadingId(headingElements);
-        setActiveHeading(nextActiveHeadingId);
-      });
-    }
-
-    syncActiveHeadingFromViewport();
-    window.addEventListener('scroll', syncActiveHeadingFromViewport, { passive: true });
-    window.addEventListener('resize', syncActiveHeadingFromViewport);
+    window.addEventListener('scroll', handleViewportChange, { passive: true });
+    window.addEventListener('resize', handleViewportChange);
 
     return () => {
-      if (rafID) {
-        cancelAnimationFrame(rafID);
+      if (viewportSyncAnimationFrameRef.current) {
+        cancelAnimationFrame(viewportSyncAnimationFrameRef.current);
       }
-      window.removeEventListener('scroll', syncActiveHeadingFromViewport);
-      window.removeEventListener('resize', syncActiveHeadingFromViewport);
+      window.removeEventListener('scroll', handleViewportChange);
+      window.removeEventListener('resize', handleViewportChange);
     };
-  }, [headingIdKey, headings.length, html, setActiveHeading]);
+  }, []);
 
   return {
     previewHtml: html,

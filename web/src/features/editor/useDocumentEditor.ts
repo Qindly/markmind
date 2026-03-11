@@ -14,9 +14,12 @@ export interface UseDocumentEditorResult {
   statusMessage: string;
   savePhase: DocumentSavePhase;
   isDirty: boolean;
+  isLeaveDialogOpen: boolean;
   isLoading: boolean;
   isSaving: boolean;
   handleBack: () => void;
+  handleCancelLeave: () => void;
+  handleConfirmLeave: () => void;
   handleContentChange: (value: string) => void;
   handleSave: () => Promise<void>;
   reloadDocument: () => void;
@@ -38,6 +41,7 @@ export function useDocumentEditor(): UseDocumentEditorResult {
   const [content, setContent] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [reloadSeed, setReloadSeed] = useState(0);
 
   const saveController = useDocumentSaveController({
@@ -98,16 +102,27 @@ export function useDocumentEditor(): UseDocumentEditorResult {
     setReloadSeed((currentSeed) => currentSeed + 1);
   }, []);
 
-  function handleBack() {
+  const navigateHome = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  const handleCancelLeave = useCallback(() => {
+    setIsLeaveDialogOpen(false);
+  }, []);
+
+  const handleConfirmLeave = useCallback(() => {
+    setIsLeaveDialogOpen(false);
+    navigateHome();
+  }, [navigateHome]);
+
+  const handleBack = useCallback(() => {
     if (saveController.isDirty || saveController.isSaving) {
-      const shouldLeave = window.confirm('当前文档还有未保存的更改，确定要返回首页吗？');
-      if (!shouldLeave) {
-        return;
-      }
+      setIsLeaveDialogOpen(true);
+      return;
     }
 
-    navigate('/');
-  }
+    navigateHome();
+  }, [navigateHome, saveController.isDirty, saveController.isSaving]);
 
   return {
     document,
@@ -116,9 +131,12 @@ export function useDocumentEditor(): UseDocumentEditorResult {
     statusMessage: saveController.statusMessage,
     savePhase: saveController.savePhase,
     isDirty: saveController.isDirty,
+    isLeaveDialogOpen,
     isLoading,
     isSaving: saveController.isSaving,
     handleBack,
+    handleCancelLeave,
+    handleConfirmLeave,
     handleContentChange: saveController.handleContentChange,
     handleSave: saveController.handleSave,
     reloadDocument,
