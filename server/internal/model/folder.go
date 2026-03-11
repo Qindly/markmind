@@ -1,4 +1,4 @@
-// folder.go - 定义 folders 表对应的数据模型
+﻿// folder.go - 定义 folders 表对应的数据模型
 package model
 
 import "time"

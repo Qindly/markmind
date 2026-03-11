@@ -1,4 +1,4 @@
-// auth.ts - 定义鉴权模块前端类型
+﻿// auth.ts - 定义鉴权模块前端类型
 export interface AuthUser {
   id: number;
   username: string;

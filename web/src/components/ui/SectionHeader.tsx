@@ -1,4 +1,4 @@
-// SectionHeader.tsx - 提供区块头部标题与操作区组件
+﻿// SectionHeader.tsx - 提供区块头部标题与操作区组件
 import type { ElementType, ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';

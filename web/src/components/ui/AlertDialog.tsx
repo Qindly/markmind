@@ -1,4 +1,4 @@
-// AlertDialog.tsx - 提供基于 Radix AlertDialog 的暖色确认弹窗组件
+﻿// AlertDialog.tsx - 提供基于 Radix AlertDialog 的暖色确认弹窗组件
 import * as React from 'react';
 
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';

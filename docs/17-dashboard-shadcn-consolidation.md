@@ -1,4 +1,4 @@
-# 17-dashboard-shadcn-consolidation
+﻿# 17-dashboard-shadcn-consolidation
 
 ## 本次任务做了什么
 本轮继续把 Dashboard 往 shadcn/ui 风格基座收口：新增了通用 `Alert` 组件来统一页面内错误提示、加载态与空状态；将左右两侧主面板进一步建立在 `Card` 结构之上；把超出 150 行限制的 `FolderSidebar.tsx` 拆出独立的 `FolderCreateForm.tsx` 和 `FolderRootItem.tsx`。同时对 `AGENTS.md` 做了最后一轮核对，确认当前文件已经整合了三份 AGENTS 文件中的有效新增内容，并删除了 `AGENTS-2.md`、`AGENTS-3.md` 两个仅剩备份意义的乱码快照。

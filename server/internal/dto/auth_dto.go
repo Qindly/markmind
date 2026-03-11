@@ -1,4 +1,4 @@
-// auth_dto.go - 定义鉴权相关请求与响应结构体
+﻿// auth_dto.go - 定义鉴权相关请求与响应结构体
 package dto
 
 import "time"

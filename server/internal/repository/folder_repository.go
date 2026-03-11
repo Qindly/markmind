@@ -1,4 +1,4 @@
-// folder_repository.go - 封装文件夹相关的 PostgreSQL 操作
+﻿// folder_repository.go - 封装文件夹相关的 PostgreSQL 操作
 package repository
 
 import (

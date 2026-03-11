@@ -1,4 +1,4 @@
-// DashboardListItem.tsx - 提供首页目录与文档列表共用的列表项壳子
+﻿// DashboardListItem.tsx - 提供首页目录与文档列表共用的列表项壳子
 import type { ReactNode } from 'react';
 
 import { Card, CardContent } from '../../../components/ui/Card';

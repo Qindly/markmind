@@ -1,4 +1,4 @@
-# 20-display-layer-shadcn-unification
+﻿# 20-display-layer-shadcn-unification
 
 ## 本次任务做了什么
 本轮继续完成路线 B：把剩余的展示层片段统一收口到 shadcn/ui 风格基座。新增了 `Eyebrow`、`InfoBlock`、`SectionHeader`、`EmptyState` 等展示组件，用来统一品牌介绍块、区块头部、空状态和信息摘要；同时拆出 `FolderSidebarHeader`，把 Dashboard 左侧目录栏顶部的用户信息与目录说明区统一到新的展示组件中。AuthLayout、DocumentListPanel、FolderSidebar、PageState 以及 Toaster 的部分文案承载结构也同步切换到这套展示基座。

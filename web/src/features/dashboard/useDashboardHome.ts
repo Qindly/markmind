@@ -1,5 +1,5 @@
-// useDashboardHome.ts - 封装首页列表页的数据加载、删改与创建交互状态
-import { useEffect, useMemo, useState } from 'react';
+﻿// useDashboardHome.ts - 封装首页列表页的数据加载、删改与创建交互状态
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { logoutUser } from '../../api/auth';
@@ -9,15 +9,29 @@ import {
   deleteDocument,
   deleteFolder,
   fetchDashboard,
+  searchDocuments,
   updateDocument,
   updateFolder,
 } from '../../api/dashboard';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
+import { isRequestCanceled } from '../../lib/isRequestCanceled';
 import { useAuthStore } from '../../stores/authStore';
-import type { DocumentItem, FolderItem } from '../../types/dashboard';
+import type {
+  DashboardDocumentListItem,
+  DocumentItem,
+  DocumentSortMode,
+  FolderItem,
+  SearchDocumentItem,
+  SearchScope,
+} from '../../types/dashboard';
+import { DEFAULT_DOCUMENT_SORT_MODE, sortDocuments } from './documentSort';
 
 type DashboardEntityType = 'folder' | 'document';
+
+const DOCUMENT_SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_SEARCH_SCOPE: SearchScope = 'current_folder';
 
 interface DashboardMenuState {
   type: DashboardEntityType;
@@ -36,15 +50,32 @@ interface DashboardDeleteState {
   name: string;
 }
 
-function sortDocuments(documents: DocumentItem[]): DocumentItem[] {
-  return [...documents].sort((left, right) => {
-    const timeDelta = new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-    if (timeDelta !== 0) {
-      return timeDelta;
-    }
+interface DashboardMoveState {
+  id: number;
+  title: string;
+  folderId: number | null;
+}
 
-    return right.id - left.id;
-  });
+function applyUpdatedDocument(documents: DocumentItem[], updatedDocument: DocumentItem): DocumentItem[] {
+  return documents.map((document) => (document.id === updatedDocument.id ? updatedDocument : document));
+}
+
+function getFolderDisplayName(folders: FolderItem[], folderId: number | null): string {
+  if (folderId === null) {
+    return '根目录';
+  }
+
+  return folders.find((folder) => folder.id === folderId)?.name ?? '未知目录';
+}
+
+function cancelActiveSearchRequest(controllerRef: MutableRefObject<AbortController | null>) {
+  const activeRequestController = controllerRef.current;
+  if (!activeRequestController) {
+    return;
+  }
+
+  activeRequestController.abort();
+  controllerRef.current = null;
 }
 
 /**
@@ -55,8 +86,14 @@ export function useDashboardHome() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const activeSearchRequestControllerRef = useRef<AbortController | null>(null);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchDocumentItem[] | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchScope, setSearchScope] = useState<SearchScope>(DEFAULT_SEARCH_SCOPE);
+  const [searchErrorMessage, setSearchErrorMessage] = useState('');
+  const [documentSortMode, setDocumentSortMode] = useState<DocumentSortMode>(DEFAULT_DOCUMENT_SORT_MODE);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -67,20 +104,54 @@ export function useDashboardHome() {
   const [menuState, setMenuState] = useState<DashboardMenuState | null>(null);
   const [editingState, setEditingState] = useState<DashboardEditingState | null>(null);
   const [deleteState, setDeleteState] = useState<DashboardDeleteState | null>(null);
+  const [moveState, setMoveState] = useState<DashboardMoveState | null>(null);
   const [isUpdatingFolder, setIsUpdatingFolder] = useState(false);
   const [isUpdatingDocument, setIsUpdatingDocument] = useState(false);
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [isDeletingDocument, setIsDeletingDocument] = useState(false);
+  const [isMovingDocument, setIsMovingDocument] = useState(false);
+  const [isSearchingDocuments, setIsSearchingDocuments] = useState(false);
+  const normalizedSearchKeyword = searchKeyword.trim();
+  const debouncedSearchKeyword = useDebouncedValue(normalizedSearchKeyword, DOCUMENT_SEARCH_DEBOUNCE_MS);
+  const searchRequestFolderId = searchScope === 'current_folder' ? selectedFolderId : undefined;
+  const isSearchPending =
+    normalizedSearchKeyword !== '' && (normalizedSearchKeyword !== debouncedSearchKeyword || isSearchingDocuments);
+  const searchResultCount =
+    normalizedSearchKeyword === '' || isSearchPending || searchErrorMessage !== '' ? null : (searchResults?.length ?? 0);
+  const isGlobalSearchActive = normalizedSearchKeyword !== '' && searchScope === 'global';
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) ?? null,
     [folders, selectedFolderId],
   );
 
-  const visibleDocuments = useMemo(
+  const currentFolderDocuments = useMemo(
     () => documents.filter((document) => document.folder_id === selectedFolderId),
     [documents, selectedFolderId],
   );
+
+  const visibleDocuments = useMemo(
+    () => sortDocuments(currentFolderDocuments, documentSortMode),
+    [currentFolderDocuments, documentSortMode],
+  );
+  const documentPanelTitle = isGlobalSearchActive ? '全部文档' : selectedFolder?.name ?? '根目录';
+  const documentPanelTotalCount = isGlobalSearchActive ? documents.length : currentFolderDocuments.length;
+
+  const filteredDocuments = useMemo<DashboardDocumentListItem[]>(() => {
+    if (normalizedSearchKeyword === '') {
+      return visibleDocuments;
+    }
+
+    if (normalizedSearchKeyword !== debouncedSearchKeyword) {
+      return searchResults === null ? visibleDocuments : sortDocuments(searchResults, documentSortMode);
+    }
+
+    if (debouncedSearchKeyword === '') {
+      return visibleDocuments;
+    }
+
+    return sortDocuments(searchResults ?? [], documentSortMode);
+  }, [debouncedSearchKeyword, documentSortMode, normalizedSearchKeyword, searchResults, visibleDocuments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +167,7 @@ export function useDashboardHome() {
         }
 
         setFolders(data.folders);
-        setDocuments(sortDocuments(data.documents));
+        setDocuments(data.documents);
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(getErrorMessage(error, '加载首页列表失败，请稍后重试'));
@@ -114,6 +185,78 @@ export function useDashboardHome() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    // 输入继续变化时先中止旧请求，避免过期结果在防抖期间回写页面。
+    if (normalizedSearchKeyword === '') {
+      cancelActiveSearchRequest(activeSearchRequestControllerRef);
+      setIsSearchingDocuments(false);
+      return;
+    }
+
+    if (normalizedSearchKeyword !== debouncedSearchKeyword) {
+      cancelActiveSearchRequest(activeSearchRequestControllerRef);
+      setIsSearchingDocuments(false);
+    }
+  }, [debouncedSearchKeyword, normalizedSearchKeyword]);
+
+  useEffect(() => {
+    const normalizedKeyword = debouncedSearchKeyword;
+
+    async function runDocumentSearch() {
+      // 只有防抖后的稳定关键字才会真正触发搜索请求。
+      if (normalizedKeyword === '') {
+        cancelActiveSearchRequest(activeSearchRequestControllerRef);
+        setSearchResults(null);
+        setSearchErrorMessage('');
+        setIsSearchingDocuments(false);
+        return;
+      }
+
+      const requestController = new AbortController();
+      activeSearchRequestControllerRef.current = requestController;
+      setIsSearchingDocuments(true);
+      setSearchResults(null);
+      setSearchErrorMessage('');
+
+      try {
+        const response = await searchDocuments(
+          {
+            keyword: normalizedKeyword,
+            scope: searchScope,
+            folder_id: searchRequestFolderId,
+          },
+          {
+            signal: requestController.signal,
+          },
+        );
+        if (activeSearchRequestControllerRef.current !== requestController) {
+          return;
+        }
+
+        setSearchResults(response.documents);
+      } catch (error) {
+        if (isRequestCanceled(error)) {
+          return;
+        }
+
+        if (activeSearchRequestControllerRef.current === requestController) {
+          setSearchErrorMessage(getErrorMessage(error, '搜索文档失败，请稍后重试'));
+        }
+      } finally {
+        if (activeSearchRequestControllerRef.current === requestController) {
+          activeSearchRequestControllerRef.current = null;
+          setIsSearchingDocuments(false);
+        }
+      }
+    }
+
+    void runDocumentSearch();
+
+    return () => {
+      cancelActiveSearchRequest(activeSearchRequestControllerRef);
+    };
+  }, [debouncedSearchKeyword, documents, searchRequestFolderId, searchScope]);
 
   async function handleLogout() {
     setErrorMessage('');
@@ -140,6 +283,9 @@ export function useDashboardHome() {
     try {
       const response = await createFolder({ name });
       setFolders((currentFolders) => [...currentFolders, response.folder]);
+      setSearchResults(null);
+      setSearchErrorMessage('');
+      setSearchKeyword('');
       setSelectedFolderId(response.folder.id);
       setSelectedDocumentId(null);
       setMenuState(null);
@@ -155,15 +301,18 @@ export function useDashboardHome() {
 
   async function handleCreateDocument() {
     setErrorMessage('');
+    setSearchErrorMessage('');
     setIsCreatingDocument(true);
 
     try {
       const response = await createDocument({ folder_id: selectedFolderId });
-      setDocuments((currentDocuments) => sortDocuments([response.document, ...currentDocuments]));
+      setDocuments((currentDocuments) => [response.document, ...currentDocuments]);
       setSelectedDocumentId(response.document.id);
       setMenuState(null);
       setEditingState(null);
+      setMoveState(null);
       toast({ description: `已创建文档「${response.document.title}」` });
+      navigate(`/documents/${response.document.id}/edit`);
     } catch (error) {
       setErrorMessage(getErrorMessage(error, '创建空文档失败，请稍后重试'));
     } finally {
@@ -176,11 +325,50 @@ export function useDashboardHome() {
     setSelectedDocumentId(null);
     setMenuState(null);
     setEditingState(null);
+
+    if (normalizedSearchKeyword === '') {
+      setSearchResults(null);
+      setSearchErrorMessage('');
+      return;
+    }
+
+    if (searchScope === 'current_folder') {
+      setSearchResults(null);
+      setSearchErrorMessage('');
+    }
+  }
+
+  function handleChangeSearchKeyword(value: string) {
+    setSearchErrorMessage('');
+    setSearchKeyword(value);
+  }
+
+  function handleChangeSearchScope(scope: SearchScope) {
+    if (scope === searchScope) {
+      return;
+    }
+
+    cancelActiveSearchRequest(activeSearchRequestControllerRef);
+    setIsSearchingDocuments(false);
+    setSearchResults(null);
+    setSearchErrorMessage('');
+    setSearchScope(scope);
+  }
+
+  function handleChangeDocumentSortMode(sortMode: DocumentSortMode) {
+    setDocumentSortMode(sortMode);
+  }
+
+  function handleClearSearchKeyword() {
+    setSearchResults(null);
+    setSearchErrorMessage('');
+    setSearchKeyword('');
   }
 
   function handleSelectDocument(documentId: number) {
     setSelectedDocumentId(documentId);
     setMenuState(null);
+    navigate(`/documents/${documentId}/edit`);
   }
 
   function handleOpenFolderMenu(folderId: number) {
@@ -275,9 +463,7 @@ export function useDashboardHome() {
 
     try {
       const response = await updateDocument(editingState.id, { title: editingState.value });
-      setDocuments((currentDocuments) =>
-        sortDocuments(currentDocuments.map((document) => (document.id === response.document.id ? response.document : document))),
-      );
+      setDocuments((currentDocuments) => applyUpdatedDocument(currentDocuments, response.document));
       setEditingState(null);
       toast({ description: `已重命名文档为「${response.document.title}」` });
     } catch (error) {
@@ -297,8 +483,47 @@ export function useDashboardHome() {
     setDeleteState({ type: 'document', id: document.id, name: document.title });
   }
 
+  function handleRequestMoveDocument(document: DocumentItem) {
+    setMenuState(null);
+    setMoveState({
+      id: document.id,
+      title: document.title,
+      folderId: document.folder_id,
+    });
+  }
+
+  function handleCancelMoveDocument() {
+    setMoveState(null);
+  }
+
   function handleCancelDelete() {
     setDeleteState(null);
+  }
+
+  async function handleConfirmMoveDocument(folderId: number | null) {
+    const target = moveState;
+    if (!target) {
+      return;
+    }
+
+    setErrorMessage('');
+    setIsMovingDocument(true);
+
+    try {
+      const response = await updateDocument(target.id, { folder_id: folderId });
+      setDocuments((currentDocuments) => applyUpdatedDocument(currentDocuments, response.document));
+      if (selectedDocumentId === target.id && response.document.folder_id !== selectedFolderId) {
+        setSelectedDocumentId(null);
+      }
+      setMoveState(null);
+      toast({
+        description: `已将文档「${response.document.title}」移动到「${getFolderDisplayName(folders, response.document.folder_id)}」`,
+      });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, '移动文档失败，请稍后重试'));
+    } finally {
+      setIsMovingDocument(false);
+    }
   }
 
   async function handleConfirmDelete() {
@@ -318,6 +543,11 @@ export function useDashboardHome() {
         if (selectedFolderId === target.id) {
           setSelectedFolderId(null);
           setSelectedDocumentId(null);
+          if (searchScope === 'current_folder') {
+            setSearchResults(null);
+            setSearchErrorMessage('');
+            setSearchKeyword('');
+          }
         }
         setDeleteState(null);
         toast({ description: `已删除文件夹「${target.name}」`, variant: 'destructive' });
@@ -351,6 +581,13 @@ export function useDashboardHome() {
     user,
     folders,
     visibleDocuments,
+    filteredDocuments,
+    documentPanelTitle,
+    documentPanelTotalCount,
+    documentSortMode,
+    searchScope,
+    searchKeyword,
+    searchErrorMessage,
     selectedFolderId,
     selectedFolderName: selectedFolder?.name ?? '根目录',
     selectedDocumentId,
@@ -363,17 +600,27 @@ export function useDashboardHome() {
     isUpdatingDocument,
     isDeletingFolder,
     isDeletingDocument,
+    isMovingDocument,
+    isSearchingDocuments,
+    isSearchPending,
+    searchResultCount,
+    isGlobalSearchActive,
     folderMenuId: menuState?.type === 'folder' ? menuState.id : null,
     documentMenuId: menuState?.type === 'document' ? menuState.id : null,
     editingFolderId: editingState?.type === 'folder' ? editingState.id : null,
     editingDocumentId: editingState?.type === 'document' ? editingState.id : null,
     editingValue: editingState?.value ?? '',
     deleteTarget: deleteState,
+    moveTarget: moveState,
     handleLogout,
     handleCreateFolder,
     handleCreateDocument,
     handleSelectFolder,
     handleSelectDocument,
+    handleChangeSearchKeyword,
+    handleChangeSearchScope,
+    handleChangeDocumentSortMode,
+    handleClearSearchKeyword,
     handleOpenFolderMenu,
     handleOpenDocumentMenu,
     handleCloseFolderMenu,
@@ -383,9 +630,12 @@ export function useDashboardHome() {
     handleChangeEditingValue,
     handleSubmitEditing,
     handleCancelEditing,
+    handleRequestMoveDocument,
     handleRequestDeleteFolder,
     handleRequestDeleteDocument,
+    handleCancelMoveDocument,
     handleCancelDelete,
+    handleConfirmMoveDocument,
     handleConfirmDelete,
   };
 }

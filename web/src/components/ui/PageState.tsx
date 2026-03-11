@@ -1,4 +1,4 @@
-// PageState.tsx - 提供全屏页面状态占位组件
+﻿// PageState.tsx - 提供全屏页面状态占位组件
 import { Card, CardContent } from './Card';
 import { InfoBlock } from './InfoBlock';
 

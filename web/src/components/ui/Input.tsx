@@ -1,4 +1,4 @@
-// Input.tsx - 提供基于 shadcn/ui 风格封装的输入框组件
+﻿// Input.tsx - 提供基于 shadcn/ui 风格封装的输入框组件
 import * as React from 'react';
 
 import { cn } from '../../lib/cn';

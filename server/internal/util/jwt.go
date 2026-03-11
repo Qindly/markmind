@@ -1,4 +1,4 @@
-// jwt.go - 封装 Access Token 的生成与解析逻辑
+﻿// jwt.go - 封装 Access Token 的生成与解析逻辑
 package util
 
 import (

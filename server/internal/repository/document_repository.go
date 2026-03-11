@@ -1,4 +1,4 @@
-// document_repository.go - 封装文档相关的 PostgreSQL 操作
+﻿// document_repository.go - 封装文档相关的 PostgreSQL 操作
 package repository
 
 import (
@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	appconst "github.com/Qindly/markmind/internal/const"
 	"github.com/Qindly/markmind/internal/model"
@@ -16,10 +17,12 @@ import (
 // DocumentRepository - 文档数据访问接口。
 type DocumentRepository interface {
 	ListDocumentsByUserID(ctx context.Context, userID int64) ([]model.Document, error)
+	SearchDocumentsByKeyword(ctx context.Context, userID int64, folderID *int64, keyword string, searchAll bool) ([]model.Document, error)
 	CreateDocument(ctx context.Context, document model.Document) (*model.Document, error)
 	CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error)
 	FindDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) (*model.Document, error)
-	UpdateDocumentTitleByIDAndUserID(ctx context.Context, documentID int64, userID int64, title string) (*model.Document, error)
+	UpdateDocumentMetaByIDAndUserID(ctx context.Context, documentID int64, userID int64, title *string, folderIDSet bool, folderID *int64) (*model.Document, error)
+	UpdateDocumentContentByIDAndUserID(ctx context.Context, documentID int64, userID int64, content string) (*model.Document, error)
 	DeleteDocumentByIDAndUserID(ctx context.Context, documentID int64, userID int64) error
 }
 
@@ -81,6 +84,69 @@ func (repository *documentRepository) CreateDocument(ctx context.Context, docume
 	return createdDocument, nil
 }
 
+func (repository *documentRepository) SearchDocumentsByKeyword(
+	ctx context.Context,
+	userID int64,
+	folderID *int64,
+	keyword string,
+	searchAll bool,
+) ([]model.Document, error) {
+	// 这里保留标题/正文包含关键字即命中的产品语义，
+	// 并依赖 documents.title / documents.content 上的 pg_trgm GIN 索引降低大数据量下的模糊搜索成本。
+	searchPattern := "%" + keyword + "%"
+	queryArgs := []any{userID, searchPattern}
+	query := `
+		SELECT id, user_id, folder_id, title, content, created_at, updated_at
+		FROM documents
+		WHERE user_id = $1
+			AND (title ILIKE $2 OR content ILIKE $2)
+		ORDER BY updated_at DESC, id DESC
+	`
+
+	if !searchAll {
+		query = `
+			SELECT id, user_id, folder_id, title, content, created_at, updated_at
+			FROM documents
+			WHERE user_id = $1 AND folder_id IS NULL
+				AND (title ILIKE $2 OR content ILIKE $2)
+			ORDER BY updated_at DESC, id DESC
+		`
+	}
+
+	if !searchAll && folderID != nil {
+		query = `
+			SELECT id, user_id, folder_id, title, content, created_at, updated_at
+			FROM documents
+			WHERE user_id = $1 AND folder_id = $2
+				AND (title ILIKE $3 OR content ILIKE $3)
+			ORDER BY updated_at DESC, id DESC
+		`
+		queryArgs = []any{userID, *folderID, searchPattern}
+	}
+
+	rows, err := repository.pool.Query(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("搜索文档失败: %w", err)
+	}
+	defer rows.Close()
+
+	documents := make([]model.Document, 0)
+	for rows.Next() {
+		document, scanErr := scanDocument(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+
+		documents = append(documents, *document)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("遍历搜索结果失败: %w", err)
+	}
+
+	return documents, nil
+}
+
 func (repository *documentRepository) CountDocumentsByFolderIDAndUserID(ctx context.Context, folderID int64, userID int64) (int64, error) {
 	query := `
 		SELECT COUNT(1)
@@ -116,21 +182,69 @@ func (repository *documentRepository) FindDocumentByIDAndUserID(ctx context.Cont
 	return document, nil
 }
 
-func (repository *documentRepository) UpdateDocumentTitleByIDAndUserID(ctx context.Context, documentID int64, userID int64, title string) (*model.Document, error) {
-	query := `
+func (repository *documentRepository) UpdateDocumentMetaByIDAndUserID(
+	ctx context.Context,
+	documentID int64,
+	userID int64,
+	title *string,
+	folderIDSet bool,
+	folderID *int64,
+) (*model.Document, error) {
+	setClauses := []string{"updated_at = NOW()"}
+	queryArgs := []any{documentID, userID}
+	nextArgIndex := 3
+
+	if title != nil {
+		setClauses = append(setClauses, fmt.Sprintf("title = $%d", nextArgIndex))
+		queryArgs = append(queryArgs, *title)
+		nextArgIndex++
+	}
+
+	if folderIDSet {
+		setClauses = append(setClauses, fmt.Sprintf("folder_id = $%d", nextArgIndex))
+
+		var folderValue any
+		if folderID != nil {
+			folderValue = *folderID
+		}
+
+		queryArgs = append(queryArgs, folderValue)
+	}
+
+	query := fmt.Sprintf(`
 		UPDATE documents
-		SET title = $3, updated_at = NOW()
+		SET %s
 		WHERE id = $1 AND user_id = $2
 		RETURNING id, user_id, folder_id, title, content, created_at, updated_at
-	`
+	`, strings.Join(setClauses, ", "))
 
-	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, documentID, userID, title))
+	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, queryArgs...))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, appconst.ErrDocumentNotFound
 		}
 
-		return nil, fmt.Errorf("更新文档失败: %w", err)
+		return nil, fmt.Errorf("更新文档元信息失败: %w", err)
+	}
+
+	return updatedDocument, nil
+}
+
+func (repository *documentRepository) UpdateDocumentContentByIDAndUserID(ctx context.Context, documentID int64, userID int64, content string) (*model.Document, error) {
+	query := `
+		UPDATE documents
+		SET content = $3, updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+		RETURNING id, user_id, folder_id, title, content, created_at, updated_at
+	`
+
+	updatedDocument, err := scanDocument(repository.pool.QueryRow(ctx, query, documentID, userID, content))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, appconst.ErrDocumentNotFound
+		}
+
+		return nil, fmt.Errorf("更新文档内容失败: %w", err)
 	}
 
 	return updatedDocument, nil

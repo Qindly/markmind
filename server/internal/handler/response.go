@@ -1,4 +1,4 @@
-// response.go - 统一处理 API 成功与失败响应
+﻿// response.go - 统一处理 API 成功与失败响应
 package handler
 
 import (
@@ -62,6 +62,12 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusNotFound, appconst.ErrCodeDocumentNotFound, err.Error()
 	case errors.Is(err, appconst.ErrFolderNotEmpty):
 		return http.StatusBadRequest, appconst.ErrCodeFolderNotEmpty, err.Error()
+	case errors.Is(err, appconst.ErrImageRequired):
+		return http.StatusBadRequest, appconst.ErrCodeImageRequired, err.Error()
+	case errors.Is(err, appconst.ErrImageTooLarge):
+		return http.StatusBadRequest, appconst.ErrCodeImageTooLarge, err.Error()
+	case errors.Is(err, appconst.ErrUnsupportedImageType):
+		return http.StatusBadRequest, appconst.ErrCodeUnsupportedImageType, err.Error()
 	case errors.Is(err, appconst.ErrInvalidCredentials):
 		return http.StatusUnauthorized, appconst.ErrCodeInvalidCredentials, err.Error()
 	case errors.Is(err, appconst.ErrUnauthorized):

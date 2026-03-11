@@ -1,4 +1,4 @@
-// config.go - 负责加载并校验服务端运行配置
+﻿// config.go - 负责加载并校验服务端运行配置
 package config
 
 import (
@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,8 @@ type Config struct {
 	CookieSameSite          string
 	AuthRateLimitWindow     time.Duration
 	AuthRateLimitMaxRequest int
+	UploadRootDir           string
+	UploadPublicBasePath    string
 }
 
 // Load - 从环境变量加载配置并执行必要校验。
@@ -86,6 +89,8 @@ func Load() (Config, error) {
 	}
 
 	cookieSameSite, _ := getEnvWithFlag("COOKIE_SAME_SITE", defaultCookieSameSite)
+	uploadRootDir, _ := getEnvWithFlag("UPLOAD_ROOT_DIR", getDefaultUploadRootDir())
+	uploadPublicBasePath, _ := getEnvWithFlag("UPLOAD_PUBLIC_BASE_PATH", "/uploads")
 	authRateLimitWindow, err := getEnvAsDuration("AUTH_RATE_LIMIT_WINDOW", defaultAuthRateLimitWindow)
 	if err != nil {
 		return Config{}, err
@@ -123,6 +128,8 @@ func Load() (Config, error) {
 		CookieSameSite:          cookieSameSite,
 		AuthRateLimitWindow:     authRateLimitWindow,
 		AuthRateLimitMaxRequest: authRateLimitMaxRequest,
+		UploadRootDir:           normalizeUploadRootDir(uploadRootDir),
+		UploadPublicBasePath:    normalizePublicBasePath(uploadPublicBasePath),
 	}
 
 	if err := validateConfig(cfg, hasDatabaseURL, hasRedisAddr, hasJWTSecret, hasFrontendOrigin); err != nil {
@@ -149,6 +156,14 @@ func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSe
 
 	if strings.TrimSpace(cfg.RefreshCookieName) == "" {
 		return fmt.Errorf("REFRESH_COOKIE_NAME 不能为空")
+	}
+
+	if strings.TrimSpace(cfg.UploadRootDir) == "" {
+		return fmt.Errorf("UPLOAD_ROOT_DIR 不能为空")
+	}
+
+	if cfg.UploadPublicBasePath == "" || !strings.HasPrefix(cfg.UploadPublicBasePath, "/") {
+		return fmt.Errorf("UPLOAD_PUBLIC_BASE_PATH 必须以 / 开头")
 	}
 
 	if !cfg.IsProduction() {
@@ -189,6 +204,36 @@ func generateDevelopmentSecret() (string, error) {
 	}
 
 	return hex.EncodeToString(buffer), nil
+}
+
+func getDefaultUploadRootDir() string {
+	return filepath.Clean(filepath.Join("..", "data", "uploads"))
+}
+
+func normalizeUploadRootDir(value string) string {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return ""
+	}
+
+	return filepath.Clean(trimmedValue)
+}
+
+func normalizePublicBasePath(value string) string {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return "/uploads"
+	}
+
+	if !strings.HasPrefix(trimmedValue, "/") {
+		trimmedValue = "/" + trimmedValue
+	}
+
+	if trimmedValue == "/" {
+		return trimmedValue
+	}
+
+	return strings.TrimRight(trimmedValue, "/")
 }
 
 func getEnvWithFlag(key string, fallback string) (string, bool) {

@@ -1,4 +1,4 @@
-// auth_handler.go - 处理注册登录刷新登出与当前用户查询请求
+﻿// auth_handler.go - 处理注册登录刷新登出与当前用户查询请求
 package handler
 
 import (

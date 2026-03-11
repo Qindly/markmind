@@ -1,4 +1,4 @@
-# 18-dashboard-item-shadcn-refactor
+﻿# 18-dashboard-item-shadcn-refactor
 
 ## 本次任务做了什么
 本轮继续把 Dashboard 的细颗粒度组件往 shadcn/ui 基座收口：新增了业务级共享组件 `DashboardListItem`，把根目录条目、文件夹条目和文档条目统一到同一套卡片壳子、边框、悬浮态与选中态之下；同时把行内重命名表单改成基于 `Card + CardContent + Input + Button` 的组合结构，减少首页中手写 `div + border` 的分散实现。

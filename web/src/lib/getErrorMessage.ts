@@ -1,4 +1,4 @@
-// getErrorMessage.ts - 从请求异常中提取适合展示给用户的错误文案
+﻿// getErrorMessage.ts - 从请求异常中提取适合展示给用户的错误文案
 import axios from 'axios';
 
 import type { ApiErrorResponse } from '../types/api';
@@ -10,6 +10,10 @@ import type { ApiErrorResponse } from '../types/api';
 export function getErrorMessage(error: unknown, fallback = '请求失败，请稍后再试'): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     return error.response?.data?.message ?? fallback;
+  }
+
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message;
   }
 
   return fallback;

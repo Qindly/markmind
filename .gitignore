@@ -22,6 +22,7 @@ web/tailwind.config.d.ts
 server/.env
 server/bin/
 server/uploads/
+data/
 
 .vscode/
 .idea/

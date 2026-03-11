@@ -1,4 +1,4 @@
-// password_test.go - 校验密码工具函数的基础行为
+﻿// password_test.go - 校验密码工具函数的基础行为
 package util
 
 import "testing"

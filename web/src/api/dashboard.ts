@@ -1,4 +1,4 @@
-// dashboard.ts - 封装首页列表与文件夹/文档操作接口请求
+﻿// dashboard.ts - 封装首页列表与文件夹/文档操作接口请求
 import { apiClient } from './client';
 
 import type { ApiResponse } from '../types/api';
@@ -10,16 +10,44 @@ import type {
   DashboardData,
   DeleteDocumentResponseData,
   DeleteFolderResponseData,
+  SearchDocumentsRequest,
+  SearchDocumentsResponseData,
   UpdateDocumentRequest,
   UpdateDocumentResponseData,
   UpdateFolderRequest,
   UpdateFolderResponseData,
 } from '../types/dashboard';
 
+interface SearchDocumentsOptions {
+  signal?: AbortSignal;
+}
+
 // fetchDashboard - 请求首页所需的文件夹与文档数据。
 // 返回值：首页展示数据。
 export async function fetchDashboard(): Promise<DashboardData> {
   const { data } = await apiClient.get<ApiResponse<DashboardData>>('/dashboard');
+  return data.data;
+}
+
+// searchDocuments - 按指定范围搜索标题或正文命中的文档。
+// 参数 payload: 搜索关键字、搜索范围与当前目录。
+// 参数 options: 可选的取消请求配置。
+// 返回值：匹配到的文档摘要列表。
+export async function searchDocuments(
+  payload: SearchDocumentsRequest,
+  options?: SearchDocumentsOptions,
+): Promise<SearchDocumentsResponseData> {
+  const { data } = await apiClient.get<ApiResponse<SearchDocumentsResponseData>>('/documents/search', {
+    params: {
+      keyword: payload.keyword,
+      scope: payload.scope,
+      ...(payload.scope === 'current_folder' && payload.folder_id !== undefined && payload.folder_id !== null
+        ? { folder_id: payload.folder_id }
+        : {}),
+    },
+    signal: options?.signal,
+  });
+
   return data.data;
 }
 
@@ -56,7 +84,7 @@ export async function createDocument(payload: CreateDocumentRequest): Promise<Cr
   return data.data;
 }
 
-// updateDocument - 更新文档标题。
+// updateDocument - 更新文档标题或归类。
 // 参数 documentId: 文档 ID。
 // 参数 payload: 文档更新参数。
 // 返回值：更新后的文档数据。

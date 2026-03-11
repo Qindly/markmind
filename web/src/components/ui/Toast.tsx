@@ -1,4 +1,4 @@
-// Toast.tsx - 提供基于 Radix Toast 的 shadcn/ui 风格消息组件
+﻿// Toast.tsx - 提供基于 Radix Toast 的 shadcn/ui 风格消息组件
 import * as React from 'react';
 
 import * as ToastPrimitives from '@radix-ui/react-toast';

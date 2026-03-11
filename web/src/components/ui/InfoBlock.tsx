@@ -1,4 +1,4 @@
-// InfoBlock.tsx - 提供统一的信息摘要与说明文案组件
+﻿// InfoBlock.tsx - 提供统一的信息摘要与说明文案组件
 import type { ElementType, ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';

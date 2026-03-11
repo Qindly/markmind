@@ -1,4 +1,4 @@
-// Card.tsx - 提供基于 shadcn/ui 风格封装的卡片组件
+﻿// Card.tsx - 提供基于 shadcn/ui 风格封装的卡片组件
 import * as React from 'react';
 import type { PropsWithChildren } from 'react';
 

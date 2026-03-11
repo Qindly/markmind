@@ -1,4 +1,4 @@
-// cookie.go - 统一处理 Refresh Token Cookie 的读写
+﻿// cookie.go - 统一处理 Refresh Token Cookie 的读写
 package util
 
 import (

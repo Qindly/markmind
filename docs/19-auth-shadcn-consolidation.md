@@ -1,4 +1,4 @@
-# 19-auth-shadcn-consolidation
+﻿# 19-auth-shadcn-consolidation
 
 ## 本次任务做了什么
 本轮继续把前端剩余的鉴权区域收口到 shadcn/ui 风格基座：新增了轻量表单字段组件 `FormField` 与字段提示组件 `FieldMessage`，同时补充了全屏页面状态组件 `PageState`，用于统一游客路由和受保护路由在启动阶段的占位展示。登录页与注册页的表单、错误提示、布局卡片结构也同步迁移到现有的 `Card / Input / Button / Alert` 体系中。

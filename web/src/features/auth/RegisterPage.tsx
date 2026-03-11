@@ -1,4 +1,4 @@
-// RegisterPage.tsx - 注册页面容器
+﻿// RegisterPage.tsx - 注册页面容器
 import { AuthLayout } from './components/AuthLayout';
 import { RegisterForm } from './components/RegisterForm';
 

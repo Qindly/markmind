@@ -1,4 +1,4 @@
-# MarkMind API 文档
+﻿# MarkMind API 文档
 
 ## 统一响应格式
 
@@ -433,7 +433,7 @@
 }
 ```
 
-### 修改文档标题
+### 修改文档信息
 - **请求方式**：PUT
 - **路由**：`/api/v1/documents/:id`
 - **是否需要鉴权**：是
@@ -444,7 +444,10 @@
 |--------|------|------|------|------|
 | Authorization | header | string | 是 | `Bearer <access_token>` |
 | id | params | number | 是 | 文档 ID |
-| title | body(json) | string | 是 | 新的文档标题，长度 1~120 |
+| title | body(json) | string | 否 | 新的文档标题，长度 1~120 |
+| folder_id | body(json) | number \| null | 否 | 目标文件夹 ID；传 `null` 表示移回根目录 |
+
+- **补充说明**：`title` 与 `folder_id` 至少需要提供一项。
 
 #### 返回样例
 
@@ -456,8 +459,8 @@
   "data": {
     "document": {
       "id": 11,
-      "folder_id": 1,
-      "title": "新的文档标题",
+      "folder_id": 3,
+      "title": "React Hooks 速记",
       "created_at": "2026-03-08T12:10:00Z",
       "updated_at": "2026-03-08T13:10:00Z"
     }
@@ -470,6 +473,110 @@
 {
   "code": 40008,
   "message": "文档不存在"
+}
+```
+
+### 搜索文档
+- **请求方式**：GET
+- **路由**：`/api/v1/documents/search`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| keyword | query | string | 是 | 搜索关键字，会同时匹配文档标题和正文内容 |
+| scope | query | string | 否 | 搜索范围，支持 `current_folder` 和 `global`；默认 `current_folder` |
+| folder_id | query | number | 否 | 当前目录 ID；仅当 `scope=current_folder` 时生效，不传表示搜索根目录 |
+
+- **返回说明**：
+  - `scope=current_folder` 时只搜索当前目录；`scope=global` 时搜索当前用户全部文档。
+  - `snippet` 为服务端生成的正文纯文本摘要；正文命中时优先返回命中附近片段，只有标题命中时回退到正文开头摘要。
+  - `match_sources` 为命中来源标签列表，只会返回 `title`、`content` 两种值；如果标题和正文都命中，会按 `["title", "content"]` 顺序同时返回。
+  - `folder_name` 为结果所属目录名称；根目录统一返回 `根目录`。
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "documents": [
+        {
+          "id": 11,
+          "folder_id": 3,
+          "folder_name": "前端实习",
+          "title": "React Hooks 速记",
+          "snippet": "...React Router 的嵌套路由需要和 Outlet 配合使用，才能让页面结构更清晰。",
+          "match_sources": ["title", "content"],
+          "created_at": "2026-03-09T10:00:00Z",
+          "updated_at": "2026-03-09T11:00:00Z"
+        }
+      ]
+    }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40001,
+  "message": "无效的请求参数"
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40006,
+  "message": "文件夹不存在"
+}
+```
+
+### 上传编辑器图片
+- **请求方式**：POST
+- **路由**：`/api/v1/uploads/images`
+- **是否需要鉴权**：是
+- **说明**：用于处理编辑器内截图或剪贴板图片上传，成功后返回可直接写入 Markdown 的相对访问地址
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| image | body(form-data) | file | 是 | 单张图片文件，支持 `png`、`jpg`、`jpeg`、`webp`、`gif`，最大 10MB |
+
+#### 返回样例
+
+**成功（201）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "image": {
+      "url": "/uploads/2026/03/7a9fe2f0f50c1ab9c8f1dfc2f08f2d74.webp"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40011,
+  "message": "图片大小不能超过 10MB"
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40012,
+  "message": "仅支持 png、jpg、jpeg、webp、gif 格式的图片"
 }
 ```
 
@@ -494,6 +601,87 @@
   "message": "success",
   "data": {
     "deleted_id": 11
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```
+
+### 获取文档详情
+- **请求方式**：GET
+- **路由**：`/api/v1/documents/:id`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": 3,
+      "title": "React Hooks 速记",
+      "content": "# React Hooks\n\n这里是文档正文。",
+      "created_at": "2026-03-09T10:00:00Z",
+      "updated_at": "2026-03-09T10:30:00Z"
+    }
+  }
+}
+```
+
+**失败（404）**：
+```json
+{
+  "code": 40008,
+  "message": "文档不存在"
+}
+```
+
+### 更新文档正文
+- **请求方式**：PUT
+- **路由**：`/api/v1/documents/:id/content`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| id | params | number | 是 | 文档 ID |
+| content | body(json) | string | 是 | 文档正文内容，允许为空字符串 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "document": {
+      "id": 11,
+      "folder_id": 3,
+      "title": "React Hooks 速记",
+      "content": "# React Hooks\n\n已更新的正文内容。",
+      "created_at": "2026-03-09T10:00:00Z",
+      "updated_at": "2026-03-09T11:00:00Z"
+    }
   }
 }
 ```

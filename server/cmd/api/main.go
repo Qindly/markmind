@@ -1,4 +1,4 @@
-// main.go - MarkMind API 服务入口
+﻿// main.go - MarkMind API 服务入口
 package main
 
 import (
@@ -52,16 +52,28 @@ func main() {
 	sessionRepository := repository.NewSessionRepository(redisClient, cfg.RefreshTokenTTL)
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
+	documentService := service.NewDocumentService(folderRepository, documentRepository)
+	uploadService := service.NewUploadService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
+	documentHandler := handler.NewDocumentHandler(documentService)
+	uploadHandler := handler.NewUploadHandler(uploadService)
 
 	if cfg.GinMode == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router, err := handler.NewRouter(cfg, authHandler, dashboardHandler, authMiddleware, rateLimitMiddleware)
+	router, err := handler.NewRouter(
+		cfg,
+		authHandler,
+		dashboardHandler,
+		documentHandler,
+		uploadHandler,
+		authMiddleware,
+		rateLimitMiddleware,
+	)
 	if err != nil {
 		log.Fatalf("初始化路由失败: %v", err)
 	}

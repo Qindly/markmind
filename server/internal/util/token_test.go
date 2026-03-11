@@ -1,4 +1,4 @@
-// token_test.go - 校验令牌工具函数的基础行为
+﻿// token_test.go - 校验令牌工具函数的基础行为
 package util
 
 import (

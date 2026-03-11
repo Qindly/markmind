@@ -1,4 +1,4 @@
-// Button.tsx - 提供基于 shadcn/ui 风格封装的按钮组件
+﻿// Button.tsx - 提供基于 shadcn/ui 风格封装的按钮组件
 import * as React from 'react';
 
 import { Slot } from '@radix-ui/react-slot';

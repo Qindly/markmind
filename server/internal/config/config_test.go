@@ -1,4 +1,4 @@
-package config
+﻿package config
 
 import "testing"
 
@@ -57,5 +57,18 @@ func TestLoadParsesTrustedProxies(t *testing.T) {
 
 	if config.TrustedProxies[0] != "127.0.0.1" || config.TrustedProxies[1] != "::1" || config.TrustedProxies[2] != "172.16.0.0/12" {
 		t.Fatalf("受信任代理解析结果不正确: %#v", config.TrustedProxies)
+	}
+}
+
+func TestLoadNormalizesUploadPublicBasePath(t *testing.T) {
+	t.Setenv("UPLOAD_PUBLIC_BASE_PATH", "uploads/")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+
+	if config.UploadPublicBasePath != "/uploads" {
+		t.Fatalf("上传公开路径归一化结果不正确: %s", config.UploadPublicBasePath)
 	}
 }

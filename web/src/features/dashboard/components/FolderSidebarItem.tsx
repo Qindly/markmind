@@ -1,4 +1,4 @@
-// FolderSidebarItem.tsx - 渲染左侧目录栏中的单个文件夹条目
+﻿// FolderSidebarItem.tsx - 渲染左侧目录栏中的单个文件夹条目
 import { cn } from '../../../lib/cn';
 import type { FolderItem } from '../../../types/dashboard';
 import { DashboardInlineNameEditor } from './DashboardInlineNameEditor';

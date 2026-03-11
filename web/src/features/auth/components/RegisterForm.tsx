@@ -1,4 +1,4 @@
-// RegisterForm.tsx - 处理注册表单的交互与提交
+﻿// RegisterForm.tsx - 处理注册表单的交互与提交
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 

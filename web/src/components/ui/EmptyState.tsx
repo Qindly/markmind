@@ -1,4 +1,4 @@
-// EmptyState.tsx - 提供统一的空状态与轻提示展示组件
+﻿// EmptyState.tsx - 提供统一的空状态与轻提示展示组件
 import type { ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';

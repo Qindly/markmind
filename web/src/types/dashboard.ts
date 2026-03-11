@@ -1,4 +1,4 @@
-// dashboard.ts - 定义首页文件夹与文档列表相关类型
+﻿// dashboard.ts - 定义首页文件夹与文档列表相关类型
 export interface FolderItem {
   id: number;
   name: string;
@@ -13,6 +13,19 @@ export interface DocumentItem {
   created_at: string;
   updated_at: string;
 }
+
+export type SearchMatchSource = 'title' | 'content';
+export type SearchScope = 'current_folder' | 'global';
+
+export interface SearchDocumentItem extends DocumentItem {
+  folder_name: string;
+  snippet: string;
+  match_sources: SearchMatchSource[];
+}
+
+export type DashboardDocumentListItem = DocumentItem | SearchDocumentItem;
+
+export type DocumentSortMode = 'updated_desc' | 'title_asc';
 
 export interface DashboardData {
   folders: FolderItem[];
@@ -49,7 +62,8 @@ export interface CreateDocumentResponseData {
 }
 
 export interface UpdateDocumentRequest {
-  title: string;
+  title?: string;
+  folder_id?: number | null;
 }
 
 export interface UpdateDocumentResponseData {
@@ -58,4 +72,14 @@ export interface UpdateDocumentResponseData {
 
 export interface DeleteDocumentResponseData {
   deleted_id: number;
+}
+
+export interface SearchDocumentsRequest {
+  keyword: string;
+  scope: SearchScope;
+  folder_id?: number | null;
+}
+
+export interface SearchDocumentsResponseData {
+  documents: SearchDocumentItem[];
 }
