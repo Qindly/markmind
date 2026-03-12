@@ -58,7 +58,7 @@ func main() {
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
 	documentService := service.NewDocumentService(folderRepository, documentRepository)
-	settingsService := service.NewSettingsService(aiProviderSettingRepository, textEncryptor)
+	settingsService := service.NewSettingsService(aiProviderSettingRepository, textEncryptor, cfg.AIRequestTimeout)
 	aiService := service.NewAIService(documentRepository, aiProviderSettingRepository, textEncryptor, cfg.AIRequestTimeout)
 	uploadService := service.NewUploadService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)

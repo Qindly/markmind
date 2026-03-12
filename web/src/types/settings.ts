@@ -19,3 +19,22 @@ export interface UpdateAISettingsRequest {
 export interface UpdateAISettingsResponseData {
   settings: AISettingsSummary;
 }
+
+export interface TestAISettingsRequest {
+  base_url: string;
+  api_key: string;
+  model: string;
+}
+
+export interface AISettingsTestResult {
+  base_url: string;
+  model: string;
+  provider_reachable: boolean;
+  model_available: boolean;
+  using_saved_api_key: boolean;
+  message: string;
+}
+
+export interface TestAISettingsResponseData {
+  result: AISettingsTestResult;
+}

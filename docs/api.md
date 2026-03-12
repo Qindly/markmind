@@ -549,6 +549,72 @@
 }
 ```
 
+### 测试当前用户 AI Provider 设置
+
+- **请求方式**：POST
+- **路由**：`/api/v1/settings/ai/test`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空时会优先沿用已保存的密钥做测试 |
+| model | body(json) | string | 是 | 准备用于 chat completions 的模型名 |
+
+- **返回说明**：
+  - 服务端会对 `base_url` 自动补全 `/v1` 后再发起轻量 `chat/completions` 请求。
+  - `provider_reachable=true` 表示 Provider 至少已成功响应；`model_available=true` 表示当前模型已通过实际调用校验。
+  - `using_saved_api_key=true` 表示本次测试未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+
+#### 返回样例
+
+**成功（200，测试通过）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "provider_reachable": true,
+      "model_available": true,
+      "using_saved_api_key": false,
+      "message": "Provider 已连通，当前模型可用"
+    }
+  }
+}
+```
+
+**成功（200，模型不可用）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "provider_reachable": true,
+      "model_available": false,
+      "using_saved_api_key": true,
+      "message": "Provider 已连通，但当前模型不可用：The model \"gpt-4.1-mini\" does not exist"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40015,
+  "message": "AI 模型名称不能为空"
+}
+```
+
 ### 魔法笔局部改写
 
 - **请求方式**：POST

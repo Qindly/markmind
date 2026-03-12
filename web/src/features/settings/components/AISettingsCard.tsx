@@ -1,10 +1,11 @@
 ﻿// AISettingsCard.tsx - 渲染设置页中的 AI Provider 配置表单卡片
-import { Alert, AlertDescription } from '../../../components/ui/Alert';
+import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
+import type { AISettingsTestResult } from '../../../types/settings';
 
 export interface AISettingsCardProps {
   baseURL: string;
@@ -14,10 +15,13 @@ export interface AISettingsCardProps {
   maskedAPIKey: string;
   errorMessage: string;
   isSaving: boolean;
+  isTesting: boolean;
+  testResult: AISettingsTestResult | null;
   onChangeBaseURL: (value: string) => void;
   onChangeModel: (value: string) => void;
   onChangeAPIKey: (value: string) => void;
   onSave: () => Promise<void>;
+  onTestConnection: () => Promise<void>;
 }
 
 /**
@@ -33,10 +37,13 @@ export function AISettingsCard({
   maskedAPIKey,
   errorMessage,
   isSaving,
+  isTesting,
+  testResult,
   onChangeBaseURL,
   onChangeModel,
   onChangeAPIKey,
   onSave,
+  onTestConnection,
 }: AISettingsCardProps) {
   return (
     <Card className="shadow-none">
@@ -52,6 +59,18 @@ export function AISettingsCard({
         {errorMessage ? (
           <Alert variant="destructive">
             <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {testResult ? (
+          <Alert variant={testResult.provider_reachable && testResult.model_available ? 'default' : 'destructive'}>
+            <AlertTitle>{testResult.provider_reachable && testResult.model_available ? '测试通过' : '测试未通过'}</AlertTitle>
+            <AlertDescription>
+              <span className="block">{testResult.message}</span>
+              <span className="mt-1 block">标准地址：{testResult.base_url}</span>
+              <span className="mt-1 block">测试模型：{testResult.model}</span>
+              {testResult.using_saved_api_key ? <span className="mt-1 block">本次测试沿用了已保存的 API Key。</span> : null}
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -80,7 +99,7 @@ export function AISettingsCard({
         <FormField
           htmlFor="ai-api-key"
           label="API Key"
-          message={hasAPIKey ? `当前已配置：${maskedAPIKey || '已保存'}。留空表示继续沿用现有 API Key。` : '首次保存时必须填写 API Key。'}
+          message={hasAPIKey ? `当前已配置：${maskedAPIKey || '已保存'}。留空时保存和测试都会继续沿用现有 API Key。` : '首次保存或测试时必须填写 API Key。'}
         >
           <Input
             autoComplete="off"
@@ -93,8 +112,18 @@ export function AISettingsCard({
           />
         </FormField>
 
-        <div className="flex justify-end">
-          <Button className="w-auto" isLoading={isSaving} onClick={() => void onSave()} type="button">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            className="w-auto"
+            disabled={isSaving}
+            isLoading={isTesting}
+            onClick={() => void onTestConnection()}
+            type="button"
+            variant="secondary"
+          >
+            测试连接
+          </Button>
+          <Button className="w-auto" disabled={isTesting} isLoading={isSaving} onClick={() => void onSave()} type="button">
             保存 AI 设置
           </Button>
         </div>

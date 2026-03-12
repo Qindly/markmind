@@ -25,3 +25,25 @@ type UpdateAISettingsRequest struct {
 type UpdateAISettingsResponse struct {
 	Settings AISettingsSummaryResponseData `json:"settings"`
 }
+
+// TestAISettingsRequest - 测试设置页 AI Provider 连通性与模型可用性的请求体。
+type TestAISettingsRequest struct {
+	BaseURL string `json:"base_url"`
+	APIKey  string `json:"api_key"`
+	Model   string `json:"model"`
+}
+
+// AISettingsTestResult - 设置页 AI Provider 测试结果。
+type AISettingsTestResult struct {
+	BaseURL           string `json:"base_url"`
+	Model             string `json:"model"`
+	ProviderReachable bool   `json:"provider_reachable"`
+	ModelAvailable    bool   `json:"model_available"`
+	UsingSavedAPIKey  bool   `json:"using_saved_api_key"`
+	Message           string `json:"message"`
+}
+
+// TestAISettingsResponse - 测试 AI 设置返回数据。
+type TestAISettingsResponse struct {
+	Result AISettingsTestResult `json:"result"`
+}

@@ -61,6 +61,7 @@ func NewRouter(
 		protected.POST("/uploads/images", uploadHandler.UploadImage)
 		protected.GET("/settings/ai", settingsHandler.GetAISettings)
 		protected.PUT("/settings/ai", settingsHandler.UpdateAISettings)
+		protected.POST("/settings/ai/test", settingsHandler.TestAISettings)
 		protected.POST("/ai/magic-edit", aiHandler.MagicEdit)
 		protected.POST("/ai/translate", aiHandler.Translate)
 	}

@@ -51,3 +51,13 @@
 > 具体操作：新增受保护设置页维护 `baseURL`、`apiKey`、`model`，服务端对 `apiKey` 做 AES-GCM 加密并统一代理 OpenAI Compatible `chat/completions`；编辑器侧通过 CodeMirror 选区监听生成悬浮“魔法笔 / 中英翻译”入口，在对话框中完成 prompt 输入、语言配置、结果预览以及替换 / 插入 / 复制回填；翻译链路统一输出双语 Markdown，保证写回格式稳定。
 >
 > 涉及文件：`server/internal/service/settings_service.go`、`server/internal/service/ai_service.go`、`server/internal/util/encryption.go`、`web/src/features/settings/SettingsPage.tsx`、`web/src/features/editor/useEditorSelectionAI.ts`、`web/src/features/editor/components/EditorMagicEditDialog.tsx`、`web/src/features/editor/components/EditorTranslateDialog.tsx`、`docs/45-editor-selection-ai.md`
+
+## 6. AI 设置页连通性校验与选区入口稳定化
+
+由于 AI 设置页原先只支持保存配置、无法在回到编辑器前确认 Provider 与模型是否真实可用，且选区悬浮入口存在点击时因编辑器失焦而“看起来没反应”的交互缺陷，通过新增服务端真实调用探活、模型可用性校验与悬浮入口保焦修复，让用户可以在设置页提前完成兼容性诊断，并稳定触发局部 AI 工作流。
+
+> 原因：如果用户只能保存配置后再回编辑器试错，不仅排查成本高，也很难快速区分是 `baseURL`、`apiKey` 还是 `model` 出了问题；同时悬浮入口一旦因为失焦被瞬时清空，功能虽然存在，但实际可用性会明显受损。
+>
+> 具体操作：后端新增 `POST /api/v1/settings/ai/test`，使用当前 `baseURL / apiKey / model` 发起轻量 `chat/completions` 请求，并结构化返回 `provider_reachable`、`model_available` 与可读失败原因；前端设置页补“测试连接”按钮和结果态展示，并支持在未输入新密钥时沿用已保存 API Key 测试；编辑器侧把“魔法笔 / 中英翻译”改成横向悬浮入口，并在按钮 `onMouseDown` 阶段阻止焦点转移，修复点击后没有反应的问题。
+>
+> 涉及文件：`server/internal/service/ai_provider_client.go`、`server/internal/service/settings_service.go`、`server/internal/handler/settings_handler.go`、`web/src/features/settings/useAISettingsForm.ts`、`web/src/features/settings/components/AISettingsCard.tsx`、`web/src/features/editor/components/EditorSelectionActions.tsx`、`docs/46-ai-settings-connectivity-test.md`

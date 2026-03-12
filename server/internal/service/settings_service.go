@@ -3,8 +3,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	appconst "github.com/Qindly/markmind/internal/const"
 	"github.com/Qindly/markmind/internal/dto"
@@ -17,11 +19,13 @@ import (
 type SettingsServicer interface {
 	GetAISettings(ctx context.Context, userID int64) (*dto.GetAISettingsResponse, error)
 	UpdateAISettings(ctx context.Context, userID int64, request dto.UpdateAISettingsRequest) (*dto.UpdateAISettingsResponse, error)
+	TestAISettings(ctx context.Context, userID int64, request dto.TestAISettingsRequest) (*dto.TestAISettingsResponse, error)
 }
 
 type settingsService struct {
 	aiProviderSettingRepository repository.AIProviderSettingRepository
 	textEncryptor               *util.TextEncryptor
+	aiProviderClient            *aiProviderClient
 }
 
 // NewSettingsService - 创建设置页服务实现。
@@ -31,10 +35,12 @@ type settingsService struct {
 func NewSettingsService(
 	aiProviderSettingRepository repository.AIProviderSettingRepository,
 	textEncryptor *util.TextEncryptor,
+	requestTimeout time.Duration,
 ) SettingsServicer {
 	return &settingsService{
 		aiProviderSettingRepository: aiProviderSettingRepository,
 		textEncryptor:               textEncryptor,
+		aiProviderClient:            newAIProviderClient(requestTimeout),
 	}
 }
 
@@ -132,4 +138,114 @@ func (service *settingsService) UpdateAISettings(
 			MaskedAPIKey: util.MaskSecretValue(apiKey),
 		},
 	}, nil
+}
+
+func (service *settingsService) TestAISettings(
+	ctx context.Context,
+	userID int64,
+	request dto.TestAISettingsRequest,
+) (*dto.TestAISettingsResponse, error) {
+	if userID <= 0 {
+		return nil, appconst.ErrUnauthorized
+	}
+
+	normalizedBaseURL, err := util.NormalizeAIProviderBaseURL(request.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	modelName := strings.TrimSpace(request.Model)
+	if modelName == "" {
+		return nil, appconst.ErrAIProviderModelRequired
+	}
+
+	apiKey, usingSavedAPIKey, err := service.resolveAISettingsTestAPIKey(ctx, userID, request.APIKey)
+	if err != nil {
+		return nil, err
+	}
+
+	testResult := dto.AISettingsTestResult{
+		BaseURL:           normalizedBaseURL,
+		Model:             modelName,
+		ProviderReachable: true,
+		ModelAvailable:    true,
+		UsingSavedAPIKey:  usingSavedAPIKey,
+		Message:           "Provider 已连通，当前模型可用",
+	}
+
+	_, err = service.aiProviderClient.requestCompletion(
+		ctx,
+		&aiProviderCredentials{
+			baseURL: normalizedBaseURL,
+			apiKey:  apiKey,
+			model:   modelName,
+		},
+		buildAISettingsTestMessages(),
+		0,
+		aiProbeMaxTokens,
+	)
+	if err != nil {
+		var completionErr *aiProviderCompletionError
+		if errors.As(err, &completionErr) {
+			testResult.ProviderReachable = completionErr.providerReachable
+			testResult.ModelAvailable = completionErr.modelAvailable
+			testResult.Message = completionErr.message
+
+			return &dto.TestAISettingsResponse{
+				Result: testResult,
+			}, nil
+		}
+
+		return nil, err
+	}
+
+	return &dto.TestAISettingsResponse{
+		Result: testResult,
+	}, nil
+}
+
+func (service *settingsService) resolveAISettingsTestAPIKey(
+	ctx context.Context,
+	userID int64,
+	rawAPIKey string,
+) (string, bool, error) {
+	apiKey := strings.TrimSpace(rawAPIKey)
+	if apiKey != "" {
+		return apiKey, false, nil
+	}
+
+	existingSetting, err := service.aiProviderSettingRepository.FindByUserID(ctx, userID)
+	if err != nil {
+		return "", false, err
+	}
+
+	if existingSetting == nil || strings.TrimSpace(existingSetting.APIKeyEncrypted) == "" {
+		return "", false, appconst.ErrAIProviderAPIKeyRequired
+	}
+
+	apiKey, err = service.textEncryptor.Decrypt(existingSetting.APIKeyEncrypted)
+	if err != nil {
+		return "", false, fmt.Errorf("解密 AI Provider API Key 失败: %w", err)
+	}
+
+	if strings.TrimSpace(apiKey) == "" {
+		return "", false, appconst.ErrAIProviderAPIKeyRequired
+	}
+
+	return apiKey, true, nil
+}
+
+func buildAISettingsTestMessages() []aiChatMessage {
+	return []aiChatMessage{
+		{
+			Role: "system",
+			Content: strings.TrimSpace(`
+你是一个 OpenAI Compatible Provider 连通性测试助手。
+你只能返回大写字符串 OK，不要输出解释、标点或其它内容。`),
+		},
+		{
+			Role:    "user",
+			Content: "Return OK only.",
+		},
+	}
 }

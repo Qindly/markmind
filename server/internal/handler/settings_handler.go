@@ -66,3 +66,28 @@ func (handler *SettingsHandler) UpdateAISettings(ctx *gin.Context) {
 
 	WriteSuccess(ctx, http.StatusOK, response)
 }
+
+// TestAISettings - 测试当前用户填写的 AI Provider 设置是否可用。
+// 参数 ctx: Gin 请求上下文。
+func (handler *SettingsHandler) TestAISettings(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	var request dto.TestAISettingsRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return
+	}
+
+	response, err := handler.settingsService.TestAISettings(ctx.Request.Context(), userID, request)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}

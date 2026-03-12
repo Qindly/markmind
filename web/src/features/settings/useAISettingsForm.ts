@@ -1,9 +1,10 @@
 ﻿// useAISettingsForm.ts - 管理设置页 AI Provider 配置的加载、编辑与保存状态
 import { useEffect, useState } from 'react';
 
-import { fetchAISettings, updateAISettings } from '../../api/settings';
+import { fetchAISettings, testAISettings, updateAISettings } from '../../api/settings';
 import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
+import type { AISettingsTestResult } from '../../types/settings';
 
 interface AISettingsFormState {
   baseURL: string;
@@ -17,11 +18,14 @@ export interface UseAISettingsFormResult {
   maskedAPIKey: string;
   isLoading: boolean;
   isSaving: boolean;
+  isTesting: boolean;
   errorMessage: string;
+  testResult: AISettingsTestResult | null;
   handleChangeBaseURL: (value: string) => void;
   handleChangeModel: (value: string) => void;
   handleChangeAPIKey: (value: string) => void;
   handleSave: () => Promise<void>;
+  handleTestConnection: () => Promise<void>;
 }
 
 /**
@@ -38,7 +42,9 @@ export function useAISettingsForm(): UseAISettingsFormResult {
   const [maskedAPIKey, setMaskedAPIKey] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [testResult, setTestResult] = useState<AISettingsTestResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,15 +110,42 @@ export function useAISettingsForm(): UseAISettingsFormResult {
     }
   }
 
+  async function handleTestConnection() {
+    setIsTesting(true);
+    setErrorMessage('');
+
+    try {
+      const response = await testAISettings({
+        base_url: form.baseURL,
+        api_key: form.apiKey,
+        model: form.model,
+      });
+
+      setTestResult(response.result);
+
+      if (response.result.provider_reachable && response.result.model_available) {
+        toast({ description: 'Provider 连通性测试通过' });
+      }
+    } catch (error) {
+      setTestResult(null);
+      setErrorMessage(getErrorMessage(error, '测试连接失败，请稍后重试'));
+    } finally {
+      setIsTesting(false);
+    }
+  }
+
   function handleChangeBaseURL(value: string) {
+    setTestResult(null);
     setForm((currentForm) => ({ ...currentForm, baseURL: value }));
   }
 
   function handleChangeModel(value: string) {
+    setTestResult(null);
     setForm((currentForm) => ({ ...currentForm, model: value }));
   }
 
   function handleChangeAPIKey(value: string) {
+    setTestResult(null);
     setForm((currentForm) => ({ ...currentForm, apiKey: value }));
   }
 
@@ -122,10 +155,13 @@ export function useAISettingsForm(): UseAISettingsFormResult {
     maskedAPIKey,
     isLoading,
     isSaving,
+    isTesting,
     errorMessage,
+    testResult,
     handleChangeBaseURL,
     handleChangeModel,
     handleChangeAPIKey,
     handleSave,
+    handleTestConnection,
   };
 }

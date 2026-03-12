@@ -22,10 +22,14 @@ export function EditorSelectionActions({
   onOpenTranslate,
 }: EditorSelectionActionsProps) {
   return (
-    <div className="fixed z-[130] flex flex-col gap-2 rounded-[28px] border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-2 shadow-soft" style={{ top, left }}>
+    <div className="fixed z-[130] flex flex-row gap-2 rounded-[28px] border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] p-2 shadow-soft" style={{ top, left }}>
       <Button
         aria-label="打开魔法笔"
         className="h-11 w-11 rounded-full"
+        onMouseDown={(event) => {
+          // 阻止按钮抢走编辑器焦点，避免选区浮层在点击瞬间被清空。
+          event.preventDefault();
+        }}
         onClick={onOpenMagicEdit}
         size="icon"
         title="魔法笔"
@@ -37,6 +41,10 @@ export function EditorSelectionActions({
       <Button
         aria-label="打开翻译"
         className="h-11 w-11 rounded-full"
+        onMouseDown={(event) => {
+          // 与魔法笔保持一致，避免点击时编辑器失焦。
+          event.preventDefault();
+        }}
         onClick={onOpenTranslate}
         size="icon"
         title="中英翻译"

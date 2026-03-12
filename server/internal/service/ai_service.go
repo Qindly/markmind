@@ -2,12 +2,10 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
@@ -31,38 +29,7 @@ type aiService struct {
 	documentRepository          repository.DocumentRepository
 	aiProviderSettingRepository repository.AIProviderSettingRepository
 	textEncryptor               *util.TextEncryptor
-	httpClient                  *http.Client
-}
-
-type aiProviderCredentials struct {
-	baseURL string
-	apiKey  string
-	model   string
-}
-
-type aiChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type aiChatCompletionRequest struct {
-	Model       string          `json:"model"`
-	Messages    []aiChatMessage `json:"messages"`
-	Temperature float64         `json:"temperature"`
-}
-
-type aiChatCompletionResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-}
-
-type aiErrorResponse struct {
-	Error *struct {
-		Message string `json:"message"`
-	} `json:"error"`
+	aiProviderClient            *aiProviderClient
 }
 
 type aiTranslateStructuredResponse struct {
@@ -86,9 +53,7 @@ func NewAIService(
 		documentRepository:          documentRepository,
 		aiProviderSettingRepository: aiProviderSettingRepository,
 		textEncryptor:               textEncryptor,
-		httpClient: &http.Client{
-			Timeout: requestTimeout,
-		},
+		aiProviderClient:            newAIProviderClient(requestTimeout),
 	}
 }
 
@@ -254,74 +219,12 @@ func (service *aiService) requestAICompletion(
 	messages []aiChatMessage,
 	temperature float64,
 ) (string, error) {
-	requestBody, err := json.Marshal(aiChatCompletionRequest{
-		Model:       credentials.model,
-		Messages:    messages,
-		Temperature: temperature,
-	})
+	content, err := service.aiProviderClient.requestCompletion(ctx, credentials, messages, temperature, 0)
 	if err != nil {
-		return "", fmt.Errorf("序列化 AI 请求失败: %w", err)
-	}
-
-	httpRequest, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		util.BuildAIChatCompletionsURL(credentials.baseURL),
-		bytes.NewReader(requestBody),
-	)
-	if err != nil {
-		return "", fmt.Errorf("创建 AI 请求失败: %w", err)
-	}
-
-	httpRequest.Header.Set("Authorization", "Bearer "+credentials.apiKey)
-	httpRequest.Header.Set("Content-Type", "application/json")
-
-	httpResponse, err := service.httpClient.Do(httpRequest)
-	if err != nil {
-		return "", fmt.Errorf("%w: %v", appconst.ErrAIRequestFailed, err)
-	}
-	defer httpResponse.Body.Close()
-
-	responseBody, err := io.ReadAll(io.LimitReader(httpResponse.Body, 2*1024*1024))
-	if err != nil {
-		return "", fmt.Errorf("读取 AI 响应失败: %w", err)
-	}
-
-	if httpResponse.StatusCode < http.StatusOK || httpResponse.StatusCode >= http.StatusMultipleChoices {
-		return "", buildAIRequestFailedError(responseBody)
-	}
-
-	var completionResponse aiChatCompletionResponse
-	if err := json.Unmarshal(responseBody, &completionResponse); err != nil {
-		return "", fmt.Errorf("%w: %v", appconst.ErrAIInvalidResponse, err)
-	}
-
-	if len(completionResponse.Choices) == 0 {
-		return "", appconst.ErrAIInvalidResponse
-	}
-
-	content := strings.TrimSpace(completionResponse.Choices[0].Message.Content)
-	if content == "" {
-		return "", appconst.ErrAIInvalidResponse
+		return "", mapAIProviderCompletionError(err)
 	}
 
 	return content, nil
-}
-
-func buildAIRequestFailedError(responseBody []byte) error {
-	var errorResponse aiErrorResponse
-	if err := json.Unmarshal(responseBody, &errorResponse); err == nil {
-		if errorResponse.Error != nil && strings.TrimSpace(errorResponse.Error.Message) != "" {
-			return fmt.Errorf("%w：%s", appconst.ErrAIRequestFailed, strings.TrimSpace(errorResponse.Error.Message))
-		}
-	}
-
-	trimmedBody := strings.TrimSpace(string(responseBody))
-	if trimmedBody == "" {
-		return appconst.ErrAIRequestFailed
-	}
-
-	return fmt.Errorf("%w：%s", appconst.ErrAIRequestFailed, trimmedBody)
 }
 
 func decodeTranslateResult(rawResult string) (*aiTranslateStructuredResponse, error) {
@@ -337,6 +240,19 @@ func decodeTranslateResult(rawResult string) (*aiTranslateStructuredResponse, er
 	}
 
 	return &translateResult, nil
+}
+
+func mapAIProviderCompletionError(err error) error {
+	var completionErr *aiProviderCompletionError
+	if errors.As(err, &completionErr) {
+		if completionErr.kind == aiProviderCompletionErrorKindInvalidPayload {
+			return fmt.Errorf("%w：%s", appconst.ErrAIInvalidResponse, completionErr.message)
+		}
+
+		return fmt.Errorf("%w：%s", appconst.ErrAIRequestFailed, completionErr.message)
+	}
+
+	return err
 }
 
 func buildMagicEditMessages(

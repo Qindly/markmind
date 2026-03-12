@@ -62,12 +62,15 @@ export function SettingsPage() {
           errorMessage={settingsForm.errorMessage}
           hasAPIKey={settingsForm.hasAPIKey}
           isSaving={settingsForm.isSaving}
+          isTesting={settingsForm.isTesting}
           maskedAPIKey={settingsForm.maskedAPIKey}
           model={settingsForm.form.model}
           onChangeAPIKey={settingsForm.handleChangeAPIKey}
           onChangeBaseURL={settingsForm.handleChangeBaseURL}
           onChangeModel={settingsForm.handleChangeModel}
           onSave={settingsForm.handleSave}
+          onTestConnection={settingsForm.handleTestConnection}
+          testResult={settingsForm.testResult}
         />
       </div>
     </main>

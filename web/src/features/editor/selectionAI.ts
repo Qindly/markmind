@@ -3,8 +3,8 @@ import type { EditorView } from '@codemirror/view';
 
 const SELECTION_CONTEXT_WINDOW_SIZE = 240;
 const FLOATING_ACTION_OFFSET = 12;
-const FLOATING_ACTION_WIDTH = 76;
-const FLOATING_ACTION_HEIGHT = 108;
+const FLOATING_ACTION_WIDTH = 126;
+const FLOATING_ACTION_HEIGHT = 64;
 const FLOATING_ACTION_WINDOW_PADDING = 12;
 
 export type AIApplyMode = 'insert' | 'replace';
