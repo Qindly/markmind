@@ -15,6 +15,9 @@ import (
 // 参数 authHandler: 鉴权处理器。
 // 参数 dashboardHandler: 首页业务处理器。
 // 参数 documentHandler: 文档详情与正文编辑处理器。
+// 参数 uploadHandler: 图片上传处理器。
+// 参数 settingsHandler: 设置页处理器。
+// 参数 aiHandler: 编辑器局部 AI 处理器。
 // 参数 authMiddleware: 鉴权中间件。
 // 参数 rateLimitMiddleware: 限流中间件。
 // 返回值为配置完成的 Gin 引擎与可能出现的错误。
@@ -24,6 +27,8 @@ func NewRouter(
 	dashboardHandler *DashboardHandler,
 	documentHandler *DocumentHandler,
 	uploadHandler *UploadHandler,
+	settingsHandler *SettingsHandler,
+	aiHandler *AIHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimitMiddleware *middleware.RateLimitMiddleware,
 ) (*gin.Engine, error) {
@@ -54,6 +59,14 @@ func NewRouter(
 		protected.PUT("/documents/:id/content", documentHandler.UpdateDocumentContent)
 		protected.DELETE("/documents/:id", dashboardHandler.DeleteDocument)
 		protected.POST("/uploads/images", uploadHandler.UploadImage)
+		protected.GET("/settings/ai", settingsHandler.GetAISettings)
+		protected.PUT("/settings/ai", settingsHandler.UpdateAISettings)
+		protected.POST("/settings/ai/test", settingsHandler.TestAISettings)
+		protected.POST("/settings/ai/models", settingsHandler.ListAIModels)
+		protected.POST("/ai/magic-edit", aiHandler.MagicEdit)
+		protected.POST("/ai/magic-edit/stream", aiHandler.MagicEditStream)
+		protected.POST("/ai/translate", aiHandler.Translate)
+		protected.POST("/ai/translate/stream", aiHandler.TranslateStream)
 	}
 
 	auth := api.Group("/auth")

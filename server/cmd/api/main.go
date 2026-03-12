@@ -46,13 +46,20 @@ func main() {
 	defer redisClient.Close()
 
 	jwtManager := util.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
+	textEncryptor, err := util.NewTextEncryptor(cfg.AIProviderEncryptSecret)
+	if err != nil {
+		log.Fatalf("初始化 AI 配置加密器失败: %v", err)
+	}
 	userRepository := repository.NewUserRepository(pool)
 	folderRepository := repository.NewFolderRepository(pool)
 	documentRepository := repository.NewDocumentRepository(pool)
+	aiProviderSettingRepository := repository.NewAIProviderSettingRepository(pool)
 	sessionRepository := repository.NewSessionRepository(redisClient, cfg.RefreshTokenTTL)
 	authService := service.NewAuthService(userRepository, sessionRepository, jwtManager, cfg)
 	dashboardService := service.NewDashboardService(folderRepository, documentRepository)
 	documentService := service.NewDocumentService(folderRepository, documentRepository)
+	settingsService := service.NewSettingsService(aiProviderSettingRepository, textEncryptor, cfg.AIRequestTimeout, cfg.AIProviderDebug)
+	aiService := service.NewAIService(documentRepository, aiProviderSettingRepository, textEncryptor, cfg.AIRequestTimeout)
 	uploadService := service.NewUploadService(cfg)
 	authMiddleware := middleware.NewAuthMiddleware(jwtManager)
 	rateLimitMiddleware := middleware.NewRateLimitMiddleware(redisClient, cfg.AuthRateLimitWindow, cfg.AuthRateLimitMaxRequest)
@@ -60,6 +67,8 @@ func main() {
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	documentHandler := handler.NewDocumentHandler(documentService)
 	uploadHandler := handler.NewUploadHandler(uploadService)
+	settingsHandler := handler.NewSettingsHandler(settingsService)
+	aiHandler := handler.NewAIHandler(aiService)
 
 	if cfg.GinMode == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
@@ -71,6 +80,8 @@ func main() {
 		dashboardHandler,
 		documentHandler,
 		uploadHandler,
+		settingsHandler,
+		aiHandler,
 		authMiddleware,
 		rateLimitMiddleware,
 	)

@@ -476,6 +476,380 @@
 }
 ```
 
+## 设置与编辑器 AI 接口
+
+### 获取当前用户 AI 设置
+
+- **请求方式**：GET
+- **路由**：`/api/v1/settings/ai`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "settings": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "has_api_key": true,
+      "masked_api_key": "sk-t************7890"
+    }
+  }
+}
+```
+
+### 更新当前用户 AI 设置
+
+- **请求方式**：PUT
+- **路由**：`/api/v1/settings/ai`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空表示沿用已保存的密钥 |
+| model | body(json) | string | 是 | 用于局部 AI 生成的模型名 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "settings": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "has_api_key": true,
+      "masked_api_key": "sk-t************7890"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40014,
+  "message": "AI Provider API Key 不能为空"
+}
+```
+
+### 测试当前用户 AI Provider 设置
+
+- **请求方式**：POST
+- **路由**：`/api/v1/settings/ai/test`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空时会优先沿用已保存的密钥做测试 |
+| model | body(json) | string | 是 | 准备用于局部 AI 生成的模型名 |
+
+- **返回说明**：
+  - 服务端会对 `base_url` 自动补全 `/v1` 后，再自动探测并兼容 `chat/completions` 与 `responses`。
+  - `provider_reachable=true` 表示 Provider 至少已成功响应；`model_available=true` 表示当前模型已通过实际调用校验。
+  - `using_saved_api_key=true` 表示本次测试未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+  - `api_style` 表示本次实际命中的上游协议类型，可能为 `chat_completions` 或 `responses`。
+  - 当服务端环境变量 `AI_PROVIDER_DEBUG=true` 时，响应中会额外返回 `debug` 对象，包含本次上游请求 URL、脱敏后的请求头、请求体、响应状态码、响应头与响应体，便于排查兼容性问题。
+
+#### 返回样例
+
+**成功（200，测试通过）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "provider_reachable": true,
+      "model_available": true,
+      "using_saved_api_key": false,
+      "api_style": "chat_completions",
+      "message": "Provider 已连通，当前模型可用",
+      "debug": {
+        "request_url": "https://api.renice.cc/v1/chat/completions",
+        "request_method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer sk-d************7890",
+          "Content-Type": "application/json"
+        },
+        "request_body": "{\n  \"model\": \"gpt-4.1-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"你是一个 OpenAI Compatible Provider 连通性测试助手。\\n你只能返回大写字符串 OK，不要输出解释、标点或其它内容。\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Return OK only.\"\n    }\n  ],\n  \"temperature\": 0,\n  \"max_tokens\": 8\n}",
+        "response_status_code": 200,
+        "response_headers": {
+          "Content-Type": "application/json"
+        },
+        "response_body": "{\n  \"choices\": [\n    {\n      \"message\": {\n        \"content\": \"OK\"\n      }\n    }\n  ]\n}"
+      }
+    }
+  }
+}
+```
+
+**成功（200，模型不可用）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "provider_reachable": true,
+      "model_available": false,
+      "using_saved_api_key": true,
+      "api_style": "responses",
+      "message": "Provider 已连通，但当前模型不可用：The model \"gpt-4.1-mini\" does not exist"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40015,
+  "message": "AI 模型名称不能为空"
+}
+```
+
+### 拉取当前用户 AI Provider 模型列表
+
+- **请求方式**：POST
+- **路由**：`/api/v1/settings/ai/models`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空时会优先沿用已保存的密钥拉取模型列表 |
+| model | body(json) | string | 否 | 当前表单中的模型名；若该模型已有协议缓存，响应中会附带 `api_style` |
+
+- **返回说明**：
+  - 服务端会对 `base_url` 自动补全 `/v1` 后请求 `/models`。
+  - `provider_reachable=true` 表示 Provider 至少已成功响应；即使 `models` 为空，前端仍可继续手动填写模型名称。
+  - `using_saved_api_key=true` 表示本次未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+  - `api_style` 为当前模型已缓存的协议类型；只有之前做过连通性测试或正文 AI 调用后才一定有值。
+
+#### 返回样例
+
+**成功（200，拉取到模型列表）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "provider_reachable": true,
+      "using_saved_api_key": false,
+      "api_style": "responses",
+      "models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o-mini"],
+      "message": "已成功拉取 3 个模型，可点击下方候选快速填入"
+    }
+  }
+}
+```
+
+**成功（200，Models 接口不可用）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "provider_reachable": true,
+      "using_saved_api_key": true,
+      "models": [],
+      "message": "Provider 已响应，但 Models 接口不存在或地址不兼容：not found"
+    }
+  }
+}
+```
+
+### 魔法笔局部改写
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/magic-edit`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| instruction | body(json) | string | 是 | 用户输入的魔法笔指令 |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": "## React Hooks 速记\n\n- `useEffect` 用于同步副作用\n- `useMemo` 用于缓存昂贵计算结果"
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40016,
+  "message": "请先在设置页完成 AI Provider 配置"
+}
+```
+
+### 局部翻译
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/translate`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| source_language | body(json) | string | 否 | 原语言名称；传 `auto` 表示自动检测 |
+| target_language | body(json) | string | 是 | 目标语言名称，默认可传 `中文` |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+- **返回说明**：
+  - 服务端只返回目标语言译文，不再拼接双语 Markdown。
+  - 如果前端需要保留原文，可直接继续使用编辑器当前选区内容。
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "translated_text": "你好，世界！",
+    "target_language": "中文"
+  }
+}
+```
+
+**失败（502）**：
+```json
+{
+  "code": 50002,
+  "message": "AI 服务调用失败，请稍后重试"
+}
+```
+
+### 魔法笔局部改写（流式）
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/magic-edit/stream`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| instruction | body(json) | string | 是 | 用户输入的魔法笔指令 |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+- **响应格式**：`text/event-stream`
+- **事件说明**：
+  - `event: chunk`：返回本次增量内容，`data` 结构为 `{"delta":"..."}`。
+  - `event: done`：返回最终完整结果，`data` 结构为 `{"result":"..."}`。
+  - `event: error`：返回流式处理中的错误，`data` 结构为 `{"message":"..."}`。
+  - 当前端中断请求或关闭页面时，服务端会同步取消上游 Provider 请求。
+
+#### 返回样例
+
+**成功（200，SSE）**：
+```text
+event: chunk
+data: {"delta":"## React Hooks 速记\n\n"}
+
+event: chunk
+data: {"delta":"- useEffect 用于同步副作用"}
+
+event: done
+data: {"result":"## React Hooks 速记\n\n- useEffect 用于同步副作用"}
+```
+
+### 局部翻译（流式）
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/translate/stream`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| source_language | body(json) | string | 否 | 原语言名称；传 `auto` 表示自动检测 |
+| target_language | body(json) | string | 是 | 目标语言名称，默认可传 `中文` |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+- **响应格式**：`text/event-stream`
+- **事件说明**：
+  - `event: chunk`：返回本次译文增量，`data` 结构为 `{"delta":"..."}`。
+  - `event: done`：返回最终完整译文，`data` 结构为 `{"translated_text":"...","target_language":"中文"}`。
+  - `event: error`：返回流式处理中的错误，`data` 结构为 `{"message":"..."}`。
+  - 当前端中断请求或关闭页面时，服务端会同步取消上游 Provider 请求。
+
+#### 返回样例
+
+**成功（200，SSE）**：
+```text
+event: chunk
+data: {"delta":"你好，"}
+
+event: chunk
+data: {"delta":"世界！"}
+
+event: done
+data: {"translated_text":"你好，世界！","target_language":"中文"}
+```
+
 ### 搜索文档
 - **请求方式**：GET
 - **路由**：`/api/v1/documents/search`

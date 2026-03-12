@@ -24,6 +24,10 @@ const LazyEditorPage = lazy(async () => ({
   default: (await import('./features/editor/EditorPage')).EditorPage,
 }));
 
+const LazySettingsPage = lazy(async () => ({
+  default: (await import('./features/settings/SettingsPage')).SettingsPage,
+}));
+
 /**
  * App - 根组件。
  * 返回值：应用路由与全站消息容器 JSX 结构。
@@ -73,6 +77,16 @@ export function App() {
             </ProtectedRoute>
           }
           path="/documents/:id/edit"
+        />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<PageState message="正在加载设置页..." />}>
+                <LazySettingsPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+          path="/settings"
         />
         <Route element={<Navigate replace to="/" />} path="*" />
       </Routes>

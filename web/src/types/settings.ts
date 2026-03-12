@@ -1,0 +1,74 @@
+﻿// settings.ts - 定义设置页 AI Provider 配置相关的前端类型
+export interface AISettingsSummary {
+  base_url: string;
+  model: string;
+  has_api_key: boolean;
+  masked_api_key: string;
+}
+
+export type AIProviderAPIStyle = 'chat_completions' | 'responses';
+
+export interface GetAISettingsResponseData {
+  settings: AISettingsSummary;
+}
+
+export interface UpdateAISettingsRequest {
+  base_url: string;
+  api_key: string;
+  model: string;
+}
+
+export interface UpdateAISettingsResponseData {
+  settings: AISettingsSummary;
+}
+
+export interface TestAISettingsRequest {
+  base_url: string;
+  api_key: string;
+  model: string;
+}
+
+export interface ListAIModelsRequest {
+  base_url: string;
+  api_key: string;
+  model: string;
+}
+
+export interface AISettingsTestResult {
+  base_url: string;
+  model: string;
+  provider_reachable: boolean;
+  model_available: boolean;
+  using_saved_api_key: boolean;
+  api_style?: AIProviderAPIStyle;
+  message: string;
+  debug?: AIProviderDebugInfo;
+}
+
+export interface TestAISettingsResponseData {
+  result: AISettingsTestResult;
+}
+
+export interface AISettingsModelListResult {
+  base_url: string;
+  provider_reachable: boolean;
+  using_saved_api_key: boolean;
+  api_style?: AIProviderAPIStyle;
+  models: string[];
+  message: string;
+}
+
+export interface ListAIModelsResponseData {
+  result: AISettingsModelListResult;
+}
+
+export interface AIProviderDebugInfo {
+  request_url: string;
+  request_method: string;
+  request_headers: Record<string, string>;
+  request_body: string;
+  response_status_code?: number;
+  response_headers?: Record<string, string>;
+  response_body?: string;
+  network_error?: string;
+}

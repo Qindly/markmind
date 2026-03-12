@@ -1,4 +1,6 @@
 ﻿// FolderSidebarHeader.tsx - 渲染目录栏顶部的用户摘要与区块标题
+import { Link } from 'react-router-dom';
+
 import { Button } from '../../../components/ui/Button';
 import { InfoBlock } from '../../../components/ui/InfoBlock';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
@@ -25,9 +27,14 @@ export function FolderSidebarHeader({ user, isCreatingFolder, onStartCreate }: F
       <div className="mt-5">
         <SectionHeader
           action={
-            <Button className="h-10 w-auto px-3 text-xs" disabled={isCreatingFolder} onClick={onStartCreate} type="button">
-              新建文件夹
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild className="h-10 w-auto px-3 text-xs" type="button" variant="secondary">
+                <Link to="/settings?from=dashboard">AI 设置</Link>
+              </Button>
+              <Button className="h-10 w-auto px-3 text-xs" disabled={isCreatingFolder} onClick={onStartCreate} type="button">
+                新建文件夹
+              </Button>
+            </div>
           }
           description="先从根目录和单层文件夹开始。"
           descriptionClassName="text-xs leading-5 text-[var(--color-text-secondary)]"

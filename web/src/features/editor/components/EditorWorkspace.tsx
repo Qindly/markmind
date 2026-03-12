@@ -1,16 +1,22 @@
 ﻿// EditorWorkspace.tsx - 渲染编辑页的编辑器、预览区、左侧概览卡片与固定目录导航
 import type { EditorView } from '@codemirror/view';
+import { Link } from 'react-router-dom';
+
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentDetail, DocumentSavePhase } from '../../../types/document';
 import { formatEditorDateTime } from '../formatEditorDateTime';
+import type { UseEditorSelectionAIResult } from '../useEditorSelectionAI';
 import { useMarkdownPreview } from '../useMarkdownPreview';
 import { useEditorToc } from '../useEditorToc';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EditorInfoPanel } from './EditorInfoPanel';
 import { EditorTocPanel } from './EditorTocPanel';
+import { EditorMagicEditDialog } from './EditorMagicEditDialog';
+import { EditorSelectionActions } from './EditorSelectionActions';
+import { EditorTranslateDialog } from './EditorTranslateDialog';
 import { MarkdownPreview } from './MarkdownPreview';
 export interface EditorWorkspaceProps {
   document: DocumentDetail;
@@ -25,6 +31,7 @@ export interface EditorWorkspaceProps {
   onContentChange: (value: string) => void;
   onImagePaste: (imageFiles: File[], view: EditorView) => Promise<void>;
   onSave: () => Promise<void>;
+  selectionAI: UseEditorSelectionAIResult;
 }
 /** EditorWorkspace - 展示编辑页标题、左侧概览栏、CodeMirror 编辑器与实时预览。 */
 export function EditorWorkspace({
@@ -40,6 +47,7 @@ export function EditorWorkspace({
   onContentChange,
   onImagePaste,
   onSave,
+  selectionAI,
 }: EditorWorkspaceProps) {
   const markdownPreview = useMarkdownPreview(content);
   const editorToc = useEditorToc({
@@ -73,6 +81,9 @@ export function EditorWorkspace({
                 <div className="flex flex-wrap items-center gap-2">
                   <Button className="w-auto" onClick={onBack} size="sm" type="button" variant="secondary">
                     返回首页
+                  </Button>
+                  <Button asChild className="w-auto" size="sm" type="button" variant="secondary">
+                    <Link to={`/settings?from=editor&document_id=${document.id}`}>AI 设置</Link>
                   </Button>
                   <Button
                     className="w-auto"
@@ -123,7 +134,9 @@ export function EditorWorkspace({
                 </div>
                 <CodeMirrorEditor
                   onChange={onContentChange}
+                  onEditorReady={selectionAI.handleEditorReady}
                   onImagePaste={onImagePaste}
+                  onSelectionChange={selectionAI.handleSelectionChange}
                   placeholder="请输入 Markdown 内容..."
                   value={content}
                 />
@@ -148,6 +161,49 @@ export function EditorWorkspace({
           </CardContent>
         </Card>
       </div>
+
+      {selectionAI.selectionActionState ? (
+        <EditorSelectionActions
+          left={selectionAI.selectionActionState.left}
+          onOpenMagicEdit={() => void selectionAI.handleOpenMagicEdit()}
+          onOpenTranslate={() => void selectionAI.handleOpenTranslate()}
+          top={selectionAI.selectionActionState.top}
+        />
+      ) : null}
+
+      <EditorMagicEditDialog
+        errorMessage={selectionAI.magicErrorMessage}
+        instruction={selectionAI.magicInstruction}
+        onAbort={selectionAI.handleAbortMagicEdit}
+        onApplyInsert={selectionAI.handleApplyMagicEditInsert}
+        onApplyReplace={selectionAI.handleApplyMagicEditReplace}
+        onCopy={selectionAI.handleCopyMagicEditResult}
+        onInstructionChange={selectionAI.handleMagicInstructionChange}
+        onOpenChange={selectionAI.handleMagicEditDialogOpenChange}
+        onSubmit={selectionAI.handleSubmitMagicEdit}
+        open={selectionAI.isMagicEditDialogOpen}
+        result={selectionAI.magicResult}
+        selectedText={selectionAI.selectedText}
+        status={selectionAI.magicStatus}
+      />
+
+      <EditorTranslateDialog
+        errorMessage={selectionAI.translateErrorMessage}
+        onAbort={selectionAI.handleAbortTranslate}
+        onApplyInsert={selectionAI.handleApplyTranslateInsert}
+        onApplyReplace={selectionAI.handleApplyTranslateReplace}
+        onChangeSourceLanguage={selectionAI.handleTranslateSourceLanguageChange}
+        onChangeTargetLanguage={selectionAI.handleTranslateTargetLanguageChange}
+        onCopy={selectionAI.handleCopyTranslateResult}
+        onOpenChange={selectionAI.handleTranslateDialogOpenChange}
+        onSubmit={selectionAI.handleSubmitTranslate}
+        open={selectionAI.isTranslateDialogOpen}
+        result={selectionAI.translateResult}
+        selectedText={selectionAI.selectedText}
+        sourceLanguage={selectionAI.translateSourceLanguage}
+        status={selectionAI.translateStatus}
+        targetLanguage={selectionAI.translateTargetLanguage}
+      />
     </main>
   );
 }

@@ -31,6 +31,16 @@ function redirectToLogin(): void {
   }
 }
 
+function buildAPIURL(path: string): string {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+
+  const normalizedBaseURL = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBaseURL}${normalizedPath}`;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = bareClient
@@ -50,6 +60,41 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   return refreshPromise;
+}
+
+// fetchWithAuth - 为 fetch 请求补齐 Access Token 与 401 自动刷新。
+// 仅适用于请求体可安全重放的接口，例如 JSON 请求和流式读取。
+export async function fetchWithAuth(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const requestInit: RequestInit = {
+    ...init,
+    credentials: 'include',
+    headers,
+  };
+
+  let response = await fetch(buildAPIURL(path), requestInit);
+  if (response.status !== 401 || path.includes('/auth/refresh')) {
+    return response;
+  }
+
+  const refreshedToken = await refreshAccessToken();
+  const retryHeaders = new Headers(init.headers);
+  if (refreshedToken) {
+    retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+  }
+
+  response = await fetch(buildAPIURL(path), {
+    ...init,
+    credentials: 'include',
+    headers: retryHeaders,
+  });
+
+  return response;
 }
 
 apiClient.interceptors.request.use((config) => {

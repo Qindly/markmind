@@ -6,6 +6,7 @@ import { PageState } from '../../components/ui/PageState';
 import { EditorLeaveConfirmDialog } from './components/EditorLeaveConfirmDialog';
 import { EditorWorkspace } from './components/EditorWorkspace';
 import { useDocumentEditor } from './useDocumentEditor';
+import { useEditorSelectionAI } from './useEditorSelectionAI';
 import { useDocumentImageUpload } from './useDocumentImageUpload';
 
 /**
@@ -15,6 +16,7 @@ import { useDocumentImageUpload } from './useDocumentImageUpload';
 export function EditorPage() {
   const editor = useDocumentEditor();
   const imageUpload = useDocumentImageUpload();
+  const selectionAI = useEditorSelectionAI(editor.document);
 
   if (editor.isLoading) {
     return (
@@ -77,6 +79,7 @@ export function EditorPage() {
         onImagePaste={imageUpload.handleImagePaste}
         onSave={editor.handleSave}
         savePhase={editor.savePhase}
+        selectionAI={selectionAI}
         statusMessage={editor.statusMessage}
         uploadingImageCount={imageUpload.uploadingImageCount}
       />

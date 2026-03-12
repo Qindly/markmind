@@ -1,9 +1,13 @@
 ﻿// CodeMirrorEditor.tsx - 封装编辑页使用的 CodeMirror 编辑器组件
 import { useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
-import CodeMirror from '@uiw/react-codemirror';
+import CodeMirror, { type Extension } from '@uiw/react-codemirror';
 
-import { createMarkdownEditorExtensions, createPasteImageExtension } from '../../../lib/codeMirror';
+import {
+  createMarkdownEditorExtensions,
+  createPasteImageExtension,
+  createSelectionChangeExtension,
+} from '../../../lib/codeMirror';
 
 export interface CodeMirrorEditorProps {
   value: string;
@@ -12,6 +16,7 @@ export interface CodeMirrorEditorProps {
   onChange: (value: string) => void;
   onEditorReady?: (view: EditorView) => void;
   onImagePaste?: (imageFiles: File[], view: EditorView) => Promise<void> | void;
+  onSelectionChange?: (view: EditorView) => void;
 }
 
 /**
@@ -26,14 +31,21 @@ export function CodeMirrorEditor({
   onChange,
   onEditorReady,
   onImagePaste,
+  onSelectionChange,
 }: CodeMirrorEditorProps) {
   const editorExtensions = useMemo(() => {
-    if (!onImagePaste) {
-      return createMarkdownEditorExtensions();
+    const extraExtensions: Extension[] = [];
+
+    if (onImagePaste) {
+      extraExtensions.push(createPasteImageExtension(onImagePaste));
     }
 
-    return createMarkdownEditorExtensions([createPasteImageExtension(onImagePaste)]);
-  }, [onImagePaste]);
+    if (onSelectionChange) {
+      extraExtensions.push(createSelectionChangeExtension(onSelectionChange));
+    }
+
+    return createMarkdownEditorExtensions(extraExtensions);
+  }, [onImagePaste, onSelectionChange]);
 
   return (
     <div className="markmind-editor overflow-hidden rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)]">
@@ -46,7 +58,10 @@ export function CodeMirrorEditor({
         extensions={editorExtensions}
         height="62vh"
         onChange={onChange}
-        onCreateEditor={onEditorReady}
+        onCreateEditor={(view) => {
+          onEditorReady?.(view);
+          onSelectionChange?.(view);
+        }}
         placeholder={placeholder}
         readOnly={readOnly}
         value={value}
