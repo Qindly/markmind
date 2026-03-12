@@ -476,6 +476,160 @@
 }
 ```
 
+## 设置与编辑器 AI 接口
+
+### 获取当前用户 AI 设置
+
+- **请求方式**：GET
+- **路由**：`/api/v1/settings/ai`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "settings": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "has_api_key": true,
+      "masked_api_key": "sk-t************7890"
+    }
+  }
+}
+```
+
+### 更新当前用户 AI 设置
+
+- **请求方式**：PUT
+- **路由**：`/api/v1/settings/ai`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空表示沿用已保存的密钥 |
+| model | body(json) | string | 是 | 用于 chat completions 的模型名 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "settings": {
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1-mini",
+      "has_api_key": true,
+      "masked_api_key": "sk-t************7890"
+    }
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40014,
+  "message": "AI Provider API Key 不能为空"
+}
+```
+
+### 魔法笔局部改写
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/magic-edit`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| instruction | body(json) | string | 是 | 用户输入的魔法笔指令 |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": "## React Hooks 速记\n\n- `useEffect` 用于同步副作用\n- `useMemo` 用于缓存昂贵计算结果"
+  }
+}
+```
+
+**失败（400）**：
+```json
+{
+  "code": 40016,
+  "message": "请先在设置页完成 AI Provider 配置"
+}
+```
+
+### 局部双语翻译
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/translate`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| source_language | body(json) | string | 否 | 原语言名称；传 `auto` 表示自动检测 |
+| target_language | body(json) | string | 是 | 目标语言名称，默认可传 `中文` |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+#### 返回样例
+
+**成功（200）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "original_text": "Hello, world!",
+    "translated_text": "你好，世界！",
+    "detected_source_language": "English",
+    "target_language": "中文",
+    "bilingual_markdown_result": "### 原文（English）\n\nHello, world!\n\n### 译文（中文）\n\n你好，世界！"
+  }
+}
+```
+
+**失败（502）**：
+```json
+{
+  "code": 50002,
+  "message": "AI 服务调用失败，请稍后重试"
+}
+```
+
 ### 搜索文档
 - **请求方式**：GET
 - **路由**：`/api/v1/documents/search`

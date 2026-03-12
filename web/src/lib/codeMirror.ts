@@ -50,6 +50,7 @@ const markMindEditorTheme = EditorView.theme({
 });
 
 export type ImagePasteHandler = (imageFiles: File[], view: EditorView) => void | Promise<void>;
+export type EditorSelectionChangeHandler = (view: EditorView) => void;
 
 // createMarkdownEditorExtensions - 生成 Markdown 编辑器所需的扩展集合。
 // 参数 extraExtensions: 需要额外附加的扩展。
@@ -82,5 +83,16 @@ export function createPasteImageExtension(onImagePaste: ImagePasteHandler) {
       void onImagePaste(imageFiles, view);
       return true;
     },
+  });
+}
+
+// createSelectionChangeExtension - 创建编辑器选区与视图变化监听扩展。
+// 参数 onSelectionChange: 当选区、焦点或视图布局变化时的回调。
+// 返回值：CodeMirror 选区变化监听扩展。
+export function createSelectionChangeExtension(onSelectionChange: EditorSelectionChangeHandler) {
+  return EditorView.updateListener.of((update) => {
+    if (update.selectionSet || update.focusChanged || update.geometryChanged || update.viewportChanged) {
+      onSelectionChange(update.view);
+    }
   });
 }

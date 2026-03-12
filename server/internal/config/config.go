@@ -18,6 +18,8 @@ const (
 	defaultDatabaseURL         = "postgres://markmind:markmind@localhost:5432/markmind?sslmode=disable"
 	defaultRedisAddr           = "localhost:6379"
 	defaultFrontendOrigin      = "http://localhost:5173"
+	defaultAIEncryptSecret     = "markmind-local-ai-secret-change-me"
+	defaultAIRequestTimeout    = 60 * time.Second
 	defaultRefreshCookieName   = "markmind_refresh_token"
 	defaultCookieSameSite      = "Lax"
 	defaultAuthRateLimitWindow = time.Minute
@@ -34,6 +36,8 @@ type Config struct {
 	RedisPassword           string
 	RedisDB                 int
 	JWTSecret               string
+	AIProviderEncryptSecret string
+	AIRequestTimeout        time.Duration
 	FrontendOrigin          string
 	TrustedProxies          []string
 	AccessTokenTTL          time.Duration
@@ -64,9 +68,15 @@ func Load() (Config, error) {
 	}
 
 	jwtSecret, hasJWTSecret := getEnvWithFlag("JWT_SECRET", "")
+	aiProviderEncryptSecret, hasAIProviderEncryptSecret := getEnvWithFlag("AI_PROVIDER_ENCRYPTION_SECRET", defaultAIEncryptSecret)
 	frontendOrigin, hasFrontendOrigin := getEnvWithFlag("FRONTEND_ORIGIN", defaultFrontendOrigin)
 	trustedProxies := getEnvAsStringSlice("TRUSTED_PROXIES")
 	accessTokenTTL, err := getEnvAsDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
+
+	aiRequestTimeout, err := getEnvAsDuration("AI_REQUEST_TIMEOUT", defaultAIRequestTimeout)
 	if err != nil {
 		return Config{}, err
 	}
@@ -117,6 +127,8 @@ func Load() (Config, error) {
 		RedisPassword:           redisPassword,
 		RedisDB:                 redisDB,
 		JWTSecret:               jwtSecret,
+		AIProviderEncryptSecret: aiProviderEncryptSecret,
+		AIRequestTimeout:        aiRequestTimeout,
 		FrontendOrigin:          frontendOrigin,
 		TrustedProxies:          trustedProxies,
 		AccessTokenTTL:          accessTokenTTL,
@@ -132,7 +144,7 @@ func Load() (Config, error) {
 		UploadPublicBasePath:    normalizePublicBasePath(uploadPublicBasePath),
 	}
 
-	if err := validateConfig(cfg, hasDatabaseURL, hasRedisAddr, hasJWTSecret, hasFrontendOrigin); err != nil {
+	if err := validateConfig(cfg, hasDatabaseURL, hasRedisAddr, hasJWTSecret, hasAIProviderEncryptSecret, hasFrontendOrigin); err != nil {
 		return Config{}, err
 	}
 
@@ -145,7 +157,14 @@ func (config Config) IsProduction() bool {
 	return isProduction(config.AppEnv, config.GinMode)
 }
 
-func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSecret bool, hasFrontendOrigin bool) error {
+func validateConfig(
+	cfg Config,
+	hasDatabaseURL bool,
+	hasRedisAddr bool,
+	hasJWTSecret bool,
+	hasAIProviderEncryptSecret bool,
+	hasFrontendOrigin bool,
+) error {
 	if cfg.AuthRateLimitWindow <= 0 {
 		return fmt.Errorf("AUTH_RATE_LIMIT_WINDOW 必须大于 0")
 	}
@@ -160,6 +179,14 @@ func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSe
 
 	if strings.TrimSpace(cfg.UploadRootDir) == "" {
 		return fmt.Errorf("UPLOAD_ROOT_DIR 不能为空")
+	}
+
+	if strings.TrimSpace(cfg.AIProviderEncryptSecret) == "" {
+		return fmt.Errorf("AI_PROVIDER_ENCRYPTION_SECRET 不能为空")
+	}
+
+	if cfg.AIRequestTimeout <= 0 {
+		return fmt.Errorf("AI_REQUEST_TIMEOUT 必须大于 0")
 	}
 
 	if cfg.UploadPublicBasePath == "" || !strings.HasPrefix(cfg.UploadPublicBasePath, "/") {
@@ -180,6 +207,10 @@ func validateConfig(cfg Config, hasDatabaseURL bool, hasRedisAddr bool, hasJWTSe
 
 	if !hasJWTSecret || strings.TrimSpace(cfg.JWTSecret) == "" {
 		return fmt.Errorf("生产环境必须显式配置 JWT_SECRET")
+	}
+
+	if !hasAIProviderEncryptSecret || strings.TrimSpace(cfg.AIProviderEncryptSecret) == "" {
+		return fmt.Errorf("生产环境必须显式配置 AI_PROVIDER_ENCRYPTION_SECRET")
 	}
 
 	if !hasFrontendOrigin {

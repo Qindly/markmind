@@ -23,6 +23,7 @@ func TestLoadRejectsMissingJWTSecretInProduction(t *testing.T) {
 	t.Setenv("REDIS_ADDR", "redis:6379")
 	t.Setenv("FRONTEND_ORIGIN", "http://localhost:58000")
 	t.Setenv("COOKIE_SECURE", "true")
+	t.Setenv("AI_PROVIDER_ENCRYPTION_SECRET", "markmind-test-ai-secret")
 	t.Setenv("JWT_SECRET", "")
 
 	if _, err := Load(); err == nil {
@@ -36,6 +37,7 @@ func TestLoadRejectsInsecureCookieInProduction(t *testing.T) {
 	t.Setenv("REDIS_ADDR", "redis:6379")
 	t.Setenv("FRONTEND_ORIGIN", "http://localhost:58000")
 	t.Setenv("JWT_SECRET", "markmind-test-secret")
+	t.Setenv("AI_PROVIDER_ENCRYPTION_SECRET", "markmind-test-ai-secret")
 	t.Setenv("COOKIE_SECURE", "false")
 
 	if _, err := Load(); err == nil {
@@ -70,5 +72,19 @@ func TestLoadNormalizesUploadPublicBasePath(t *testing.T) {
 
 	if config.UploadPublicBasePath != "/uploads" {
 		t.Fatalf("上传公开路径归一化结果不正确: %s", config.UploadPublicBasePath)
+	}
+}
+
+func TestLoadRejectsMissingAIEncryptionSecretInProduction(t *testing.T) {
+	t.Setenv("GIN_MODE", "release")
+	t.Setenv("DATABASE_URL", "postgres://markmind:markmind@postgres:5432/markmind?sslmode=disable")
+	t.Setenv("REDIS_ADDR", "redis:6379")
+	t.Setenv("FRONTEND_ORIGIN", "http://localhost:58000")
+	t.Setenv("JWT_SECRET", "markmind-test-secret")
+	t.Setenv("COOKIE_SECURE", "true")
+	t.Setenv("AI_PROVIDER_ENCRYPTION_SECRET", "")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("生产环境缺少 AI_PROVIDER_ENCRYPTION_SECRET 时应返回错误")
 	}
 }

@@ -41,3 +41,13 @@
 > 具体操作：保留现有 `ILIKE '%keyword%'` 查询语义与接口结构不变，在 PostgreSQL 中启用 `pg_trgm` 扩展，并为 `documents.title`、`documents.content` 新增 GIN trigram 索引；同时在仓储层补充中文注释，明确这里是“语义不变、底层加速”的实现策略。
 >
 > 涉及文件：`server/migrations/003_enable_pg_trgm_for_document_search.sql`、`server/internal/repository/document_repository.go`、`docs/43-ai-review-fixes.md`
+
+## 5. 编辑器选区 AI 助手闭环
+
+由于传统 Markdown 编辑器往往只能做整篇 AI 处理或缺少可控的局部工作流，通过在 CodeMirror 选区上构建悬浮快捷入口、用户级 OpenAI Compatible 配置页与服务端加密代理，实现了面向 Markdown 文段的局部润色与双语翻译闭环，并支持替换、插入、复制三种结果回填动作。
+
+> 原因：如果只在编辑器里放一个全局 AI 按钮，不仅会破坏“局部处理”的即时性，也很难兼顾配置安全、选区上下文控制和 Markdown 结构保留。
+>
+> 具体操作：新增受保护设置页维护 `baseURL`、`apiKey`、`model`，服务端对 `apiKey` 做 AES-GCM 加密并统一代理 OpenAI Compatible `chat/completions`；编辑器侧通过 CodeMirror 选区监听生成悬浮“魔法笔 / 中英翻译”入口，在对话框中完成 prompt 输入、语言配置、结果预览以及替换 / 插入 / 复制回填；翻译链路统一输出双语 Markdown，保证写回格式稳定。
+>
+> 涉及文件：`server/internal/service/settings_service.go`、`server/internal/service/ai_service.go`、`server/internal/util/encryption.go`、`web/src/features/settings/SettingsPage.tsx`、`web/src/features/editor/useEditorSelectionAI.ts`、`web/src/features/editor/components/EditorMagicEditDialog.tsx`、`web/src/features/editor/components/EditorTranslateDialog.tsx`、`docs/45-editor-selection-ai.md`

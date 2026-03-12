@@ -68,6 +68,16 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusBadRequest, appconst.ErrCodeImageTooLarge, err.Error()
 	case errors.Is(err, appconst.ErrUnsupportedImageType):
 		return http.StatusBadRequest, appconst.ErrCodeUnsupportedImageType, err.Error()
+	case errors.Is(err, appconst.ErrAIProviderBaseURLRequired):
+		return http.StatusBadRequest, appconst.ErrCodeAIProviderBaseURLRequired, err.Error()
+	case errors.Is(err, appconst.ErrAIProviderAPIKeyRequired):
+		return http.StatusBadRequest, appconst.ErrCodeAIProviderAPIKeyRequired, err.Error()
+	case errors.Is(err, appconst.ErrAIProviderModelRequired):
+		return http.StatusBadRequest, appconst.ErrCodeAIProviderModelRequired, err.Error()
+	case errors.Is(err, appconst.ErrAIProviderNotConfigured):
+		return http.StatusBadRequest, appconst.ErrCodeAIProviderNotConfigured, err.Error()
+	case errors.Is(err, appconst.ErrAIInstructionRequired):
+		return http.StatusBadRequest, appconst.ErrCodeAIInstructionRequired, err.Error()
 	case errors.Is(err, appconst.ErrInvalidCredentials):
 		return http.StatusUnauthorized, appconst.ErrCodeInvalidCredentials, err.Error()
 	case errors.Is(err, appconst.ErrUnauthorized):
@@ -76,6 +86,10 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusUnauthorized, appconst.ErrCodeInvalidRefreshToken, err.Error()
 	case errors.Is(err, appconst.ErrRateLimitExceeded):
 		return http.StatusTooManyRequests, appconst.ErrCodeTooManyRequests, err.Error()
+	case errors.Is(err, appconst.ErrAIRequestFailed):
+		return http.StatusBadGateway, appconst.ErrCodeAIRequestFailed, err.Error()
+	case errors.Is(err, appconst.ErrAIInvalidResponse):
+		return http.StatusBadGateway, appconst.ErrCodeAIInvalidResponse, err.Error()
 	default:
 		return http.StatusInternalServerError, appconst.ErrCodeInternalServer, "服务器内部错误"
 	}
