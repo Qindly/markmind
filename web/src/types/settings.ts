@@ -6,6 +6,8 @@ export interface AISettingsSummary {
   masked_api_key: string;
 }
 
+export type AIProviderAPIStyle = 'chat_completions' | 'responses';
+
 export interface GetAISettingsResponseData {
   settings: AISettingsSummary;
 }
@@ -26,18 +28,38 @@ export interface TestAISettingsRequest {
   model: string;
 }
 
+export interface ListAIModelsRequest {
+  base_url: string;
+  api_key: string;
+  model: string;
+}
+
 export interface AISettingsTestResult {
   base_url: string;
   model: string;
   provider_reachable: boolean;
   model_available: boolean;
   using_saved_api_key: boolean;
+  api_style?: AIProviderAPIStyle;
   message: string;
   debug?: AIProviderDebugInfo;
 }
 
 export interface TestAISettingsResponseData {
   result: AISettingsTestResult;
+}
+
+export interface AISettingsModelListResult {
+  base_url: string;
+  provider_reachable: boolean;
+  using_saved_api_key: boolean;
+  api_style?: AIProviderAPIStyle;
+  models: string[];
+  message: string;
+}
+
+export interface ListAIModelsResponseData {
+  result: AISettingsModelListResult;
 }
 
 export interface AIProviderDebugInfo {

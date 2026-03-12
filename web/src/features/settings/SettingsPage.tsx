@@ -61,14 +61,18 @@ export function SettingsPage() {
           baseURL={settingsForm.form.baseURL}
           errorMessage={settingsForm.errorMessage}
           hasAPIKey={settingsForm.hasAPIKey}
+          isFetchingModels={settingsForm.isFetchingModels}
           isSaving={settingsForm.isSaving}
           isTesting={settingsForm.isTesting}
           maskedAPIKey={settingsForm.maskedAPIKey}
           model={settingsForm.form.model}
+          modelListResult={settingsForm.modelListResult}
           onChangeAPIKey={settingsForm.handleChangeAPIKey}
           onChangeBaseURL={settingsForm.handleChangeBaseURL}
           onChangeModel={settingsForm.handleChangeModel}
+          onFetchModels={settingsForm.handleFetchModels}
           onSave={settingsForm.handleSave}
+          onSelectModel={settingsForm.handleSelectModel}
           onTestConnection={settingsForm.handleTestConnection}
           testResult={settingsForm.testResult}
         />

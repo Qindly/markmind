@@ -1,10 +1,10 @@
 ﻿// useAISettingsForm.ts - 管理设置页 AI Provider 配置的加载、编辑与保存状态
 import { useEffect, useState } from 'react';
 
-import { fetchAISettings, testAISettings, updateAISettings } from '../../api/settings';
+import { fetchAIModels, fetchAISettings, testAISettings, updateAISettings } from '../../api/settings';
 import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
-import type { AISettingsTestResult } from '../../types/settings';
+import type { AISettingsModelListResult, AISettingsTestResult } from '../../types/settings';
 
 interface AISettingsFormState {
   baseURL: string;
@@ -19,13 +19,17 @@ export interface UseAISettingsFormResult {
   isLoading: boolean;
   isSaving: boolean;
   isTesting: boolean;
+  isFetchingModels: boolean;
   errorMessage: string;
   testResult: AISettingsTestResult | null;
+  modelListResult: AISettingsModelListResult | null;
   handleChangeBaseURL: (value: string) => void;
   handleChangeModel: (value: string) => void;
   handleChangeAPIKey: (value: string) => void;
   handleSave: () => Promise<void>;
   handleTestConnection: () => Promise<void>;
+  handleFetchModels: () => Promise<void>;
+  handleSelectModel: (value: string) => void;
 }
 
 /**
@@ -43,8 +47,10 @@ export function useAISettingsForm(): UseAISettingsFormResult {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [testResult, setTestResult] = useState<AISettingsTestResult | null>(null);
+  const [modelListResult, setModelListResult] = useState<AISettingsModelListResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,8 +140,33 @@ export function useAISettingsForm(): UseAISettingsFormResult {
     }
   }
 
+  async function handleFetchModels() {
+    setIsFetchingModels(true);
+    setErrorMessage('');
+
+    try {
+      const response = await fetchAIModels({
+        base_url: form.baseURL,
+        api_key: form.apiKey,
+        model: form.model,
+      });
+
+      setModelListResult(response.result);
+
+      if (response.result.models.length > 0) {
+        toast({ description: `已拉取 ${response.result.models.length} 个模型候选` });
+      }
+    } catch (error) {
+      setModelListResult(null);
+      setErrorMessage(getErrorMessage(error, '拉取模型列表失败，请稍后重试'));
+    } finally {
+      setIsFetchingModels(false);
+    }
+  }
+
   function handleChangeBaseURL(value: string) {
     setTestResult(null);
+    setModelListResult(null);
     setForm((currentForm) => ({ ...currentForm, baseURL: value }));
   }
 
@@ -146,7 +177,13 @@ export function useAISettingsForm(): UseAISettingsFormResult {
 
   function handleChangeAPIKey(value: string) {
     setTestResult(null);
+    setModelListResult(null);
     setForm((currentForm) => ({ ...currentForm, apiKey: value }));
+  }
+
+  function handleSelectModel(value: string) {
+    setTestResult(null);
+    setForm((currentForm) => ({ ...currentForm, model: value }));
   }
 
   return {
@@ -156,12 +193,16 @@ export function useAISettingsForm(): UseAISettingsFormResult {
     isLoading,
     isSaving,
     isTesting,
+    isFetchingModels,
     errorMessage,
     testResult,
+    modelListResult,
     handleChangeBaseURL,
     handleChangeModel,
     handleChangeAPIKey,
     handleSave,
     handleTestConnection,
+    handleFetchModels,
+    handleSelectModel,
   };
 }

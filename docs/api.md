@@ -521,7 +521,7 @@
 | Authorization | header | string | 是 | `Bearer <access_token>` |
 | base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
 | api_key | body(json) | string | 否 | 新的 Provider API Key；留空表示沿用已保存的密钥 |
-| model | body(json) | string | 是 | 用于 chat completions 的模型名 |
+| model | body(json) | string | 是 | 用于局部 AI 生成的模型名 |
 
 #### 返回样例
 
@@ -562,12 +562,13 @@
 | Authorization | header | string | 是 | `Bearer <access_token>` |
 | base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
 | api_key | body(json) | string | 否 | 新的 Provider API Key；留空时会优先沿用已保存的密钥做测试 |
-| model | body(json) | string | 是 | 准备用于 chat completions 的模型名 |
+| model | body(json) | string | 是 | 准备用于局部 AI 生成的模型名 |
 
 - **返回说明**：
-  - 服务端会对 `base_url` 自动补全 `/v1` 后再发起轻量 `chat/completions` 请求。
+  - 服务端会对 `base_url` 自动补全 `/v1` 后，再自动探测并兼容 `chat/completions` 与 `responses`。
   - `provider_reachable=true` 表示 Provider 至少已成功响应；`model_available=true` 表示当前模型已通过实际调用校验。
   - `using_saved_api_key=true` 表示本次测试未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+  - `api_style` 表示本次实际命中的上游协议类型，可能为 `chat_completions` 或 `responses`。
   - 当服务端环境变量 `AI_PROVIDER_DEBUG=true` 时，响应中会额外返回 `debug` 对象，包含本次上游请求 URL、脱敏后的请求头、请求体、响应状态码、响应头与响应体，便于排查兼容性问题。
 
 #### 返回样例
@@ -584,6 +585,7 @@
       "provider_reachable": true,
       "model_available": true,
       "using_saved_api_key": false,
+      "api_style": "chat_completions",
       "message": "Provider 已连通，当前模型可用",
       "debug": {
         "request_url": "https://api.renice.cc/v1/chat/completions",
@@ -616,6 +618,7 @@
       "provider_reachable": true,
       "model_available": false,
       "using_saved_api_key": true,
+      "api_style": "responses",
       "message": "Provider 已连通，但当前模型不可用：The model \"gpt-4.1-mini\" does not exist"
     }
   }
@@ -627,6 +630,64 @@
 {
   "code": 40015,
   "message": "AI 模型名称不能为空"
+}
+```
+
+### 拉取当前用户 AI Provider 模型列表
+
+- **请求方式**：POST
+- **路由**：`/api/v1/settings/ai/models`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| base_url | body(json) | string | 是 | OpenAI Compatible Provider 的根地址，不需要手动补 `/v1` |
+| api_key | body(json) | string | 否 | 新的 Provider API Key；留空时会优先沿用已保存的密钥拉取模型列表 |
+| model | body(json) | string | 否 | 当前表单中的模型名；若该模型已有协议缓存，响应中会附带 `api_style` |
+
+- **返回说明**：
+  - 服务端会对 `base_url` 自动补全 `/v1` 后请求 `/models`。
+  - `provider_reachable=true` 表示 Provider 至少已成功响应；即使 `models` 为空，前端仍可继续手动填写模型名称。
+  - `using_saved_api_key=true` 表示本次未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+  - `api_style` 为当前模型已缓存的协议类型；只有之前做过连通性测试或正文 AI 调用后才一定有值。
+
+#### 返回样例
+
+**成功（200，拉取到模型列表）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "provider_reachable": true,
+      "using_saved_api_key": false,
+      "api_style": "responses",
+      "models": ["gpt-4.1", "gpt-4.1-mini", "gpt-4o-mini"],
+      "message": "已成功拉取 3 个模型，可点击下方候选快速填入"
+    }
+  }
+}
+```
+
+**成功（200，Models 接口不可用）**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "result": {
+      "base_url": "https://api.openai.com/v1",
+      "provider_reachable": true,
+      "using_saved_api_key": true,
+      "models": [],
+      "message": "Provider 已响应，但 Models 接口不存在或地址不兼容：not found"
+    }
+  }
 }
 ```
 

@@ -33,6 +33,24 @@ func TestBuildAIChatCompletionsURL(t *testing.T) {
 	}
 }
 
+func TestBuildAIResponsesURL(t *testing.T) {
+	result := BuildAIResponsesURL("https://example.com/v1/")
+	expected := "https://example.com/v1/responses"
+
+	if result != expected {
+		t.Fatalf("Responses 地址拼接结果不正确: %s", result)
+	}
+}
+
+func TestBuildAIModelsURL(t *testing.T) {
+	result := BuildAIModelsURL("https://example.com/v1/")
+	expected := "https://example.com/v1/models"
+
+	if result != expected {
+		t.Fatalf("Models 地址拼接结果不正确: %s", result)
+	}
+}
+
 func TestMaskSecretValue(t *testing.T) {
 	result := MaskSecretValue("sk-test-secret-value")
 	expected := "sk-t************alue"

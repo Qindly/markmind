@@ -91,3 +91,28 @@ func (handler *SettingsHandler) TestAISettings(ctx *gin.Context) {
 
 	WriteSuccess(ctx, http.StatusOK, response)
 }
+
+// ListAIModels - 拉取当前用户填写的 AI Provider 模型列表。
+// 参数 ctx: Gin 请求上下文。
+func (handler *SettingsHandler) ListAIModels(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	var request dto.ListAIModelsRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return
+	}
+
+	response, err := handler.settingsService.ListAIModels(ctx.Request.Context(), userID, request)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}

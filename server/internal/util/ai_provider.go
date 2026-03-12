@@ -44,6 +44,20 @@ func BuildAIChatCompletionsURL(baseURL string) string {
 	return strings.TrimRight(baseURL, "/") + "/chat/completions"
 }
 
+// BuildAIResponsesURL - 基于 Provider Base URL 生成 responses 接口地址。
+// 参数 baseURL: 已规范化的 Provider Base URL。
+// 返回值：responses 完整地址。
+func BuildAIResponsesURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/") + "/responses"
+}
+
+// BuildAIModelsURL - 基于 Provider Base URL 生成 models 接口地址。
+// 参数 baseURL: 已规范化的 Provider Base URL。
+// 返回值：models 完整地址。
+func BuildAIModelsURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/") + "/models"
+}
+
 // MaskSecretValue - 对敏感字符串做脱敏展示。
 // 参数 value: 原始敏感值。
 // 返回值：脱敏后的文本。

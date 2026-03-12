@@ -71,3 +71,13 @@
 > 具体操作：后端新增 `/api/v1/ai/magic-edit/stream` 与 `/api/v1/ai/translate/stream` 两个 `text/event-stream` 接口，直接透传 OpenAI Compatible `stream=true` 增量结果，并在浏览器中断时同步取消上游请求；前端补充支持 401 自动刷新的流式 `fetch` 封装，按 `chunk / done / error` 事件驱动结果区实时刷新；同时把翻译结果从双语 Markdown 收敛为纯译文，只在完成后开放复制、插入、替换动作，避免半成品误写回文档。
 >
 > 涉及文件：`server/internal/service/ai_provider_client.go`、`server/internal/service/ai_service.go`、`server/internal/handler/ai_handler.go`、`web/src/api/client.ts`、`web/src/api/ai.ts`、`web/src/features/editor/useEditorSelectionAI.ts`、`web/src/features/editor/components/EditorMagicEditDialog.tsx`、`web/src/features/editor/components/EditorTranslateDialog.tsx`、`docs/49-ai-streaming-and-abort.md`
+
+## 8. OpenAI Compatible 多协议兼容与模型候选拉取
+
+由于不同 OpenAI Compatible Provider 在 `chat/completions` 与 `responses` 之间存在明显兼容分裂，且设置页原先只能手填模型名、缺少真实候选来源，通过新增 `/models` 拉取、协议自动探测回退与短 TTL 能力缓存，让设置页、魔法笔、翻译和流式生成统一兼容两种主流协议，并把模型选择从纯手输升级为“拉取候选 + 手动兜底”的更稳交互链路。
+
+> 原因：如果继续把正文 AI 和设置页测试都绑定在 `chat/completions`，一旦接入只支持 `responses` 的 Provider，用户就会在保存设置或编辑器调用时直接遇到兼容性断层；同时没有模型列表候选时，模型名只能靠用户手动记忆和试错，设置成本偏高。
+>
+> 具体操作：服务端在 `ai_provider_client` 中收口 OpenAI Compatible 文本生成能力，先尝试 `chat/completions`，当接口不存在或返回格式不兼容时自动回退到 `responses`，并把探测结果按 `baseURL + model` 写入短 TTL 缓存；同步新增 `POST /api/v1/settings/ai/models` 请求 `/models` 拉取模型列表，设置页补上“拉取模型”按钮、模型候选点击回填和 `api_style` 展示，让测试连接和正文 AI 共用同一套兼容链路。
+>
+> 涉及文件：`server/internal/service/ai_provider_client.go`、`server/internal/service/settings_service.go`、`server/internal/handler/settings_handler.go`、`server/internal/dto/settings_dto.go`、`web/src/api/settings.ts`、`web/src/features/settings/useAISettingsForm.ts`、`web/src/features/settings/components/AISettingsCard.tsx`、`web/src/features/settings/components/AISettingsModelSuggestions.tsx`、`docs/50-ai-provider-models-and-protocol-compat.md`

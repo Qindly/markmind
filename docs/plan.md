@@ -1,5 +1,5 @@
 ﻿# 当前下一步建议
 
-- P1：关闭 AI Provider debug 模式并实现编辑器局部 AI 的流式传输与中断请求
-- 范围：将本地 `.env` 中的 `AI_PROVIDER_DEBUG` 关闭；后端新增 `/api/v1/ai/magic-edit/stream` 与 `/api/v1/ai/translate/stream` 两个 SSE 流式接口，并透传请求取消；前端把“魔法笔 / 中英翻译”改成流式结果预览与显式中断按钮；翻译结果从双语 Markdown 调整为仅保留目标语言译文
-- 目标效果：用户在编辑器里提交魔法笔或翻译后，可以实时看到 AI 增量输出，并在生成过程中主动中断；翻译完成后返回可直接替换、插入或复制的纯译文，同时设置页默认不再展示 Provider 调试面板
+- P1：补齐 AI Provider 模型列表拉取与 `chat/completions` / `responses` 自动兼容
+- 范围：设置页新增模型列表拉取接口与候选选择交互；服务端统一探测并兼容 `chat/completions`、`responses` 两种 OpenAI Compatible 文本生成协议；测试连接结果补充实际命中的 `api_style`；正文 AI 同步复用该兼容层
+- 目标效果：用户可以先从 Provider 拉取模型列表再填写模型名；即使供应商只支持 `responses` 或只支持 `chat/completions`，设置页测试连接、魔法笔、翻译、流式输出与中断能力也都能继续正常工作

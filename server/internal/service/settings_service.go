@@ -20,6 +20,7 @@ type SettingsServicer interface {
 	GetAISettings(ctx context.Context, userID int64) (*dto.GetAISettingsResponse, error)
 	UpdateAISettings(ctx context.Context, userID int64, request dto.UpdateAISettingsRequest) (*dto.UpdateAISettingsResponse, error)
 	TestAISettings(ctx context.Context, userID int64, request dto.TestAISettingsRequest) (*dto.TestAISettingsResponse, error)
+	ListAIModels(ctx context.Context, userID int64, request dto.ListAIModelsRequest) (*dto.ListAIModelsResponse, error)
 }
 
 type settingsService struct {
@@ -195,6 +196,7 @@ func (service *settingsService) TestAISettings(
 		if errors.As(err, &completionErr) {
 			testResult.ProviderReachable = completionErr.providerReachable
 			testResult.ModelAvailable = completionErr.modelAvailable
+			testResult.APIStyle = string(completionErr.apiStyle)
 			testResult.Message = completionErr.message
 			testResult.Debug = completionErr.debug
 
@@ -213,9 +215,67 @@ func (service *settingsService) TestAISettings(
 			ProviderReachable: testResult.ProviderReachable,
 			ModelAvailable:    testResult.ModelAvailable,
 			UsingSavedAPIKey:  testResult.UsingSavedAPIKey,
+			APIStyle:          string(completionResult.apiStyle),
 			Message:           testResult.Message,
 			Debug:             completionResult.debug,
 		},
+	}, nil
+}
+
+func (service *settingsService) ListAIModels(
+	ctx context.Context,
+	userID int64,
+	request dto.ListAIModelsRequest,
+) (*dto.ListAIModelsResponse, error) {
+	if userID <= 0 {
+		return nil, appconst.ErrUnauthorized
+	}
+
+	normalizedBaseURL, err := util.NormalizeAIProviderBaseURL(request.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, usingSavedAPIKey, err := service.resolveAISettingsTestAPIKey(ctx, userID, request.APIKey)
+	if err != nil {
+		return nil, err
+	}
+
+	modelName := strings.TrimSpace(request.Model)
+	modelListResult := dto.AISettingsModelListResult{
+		BaseURL:           normalizedBaseURL,
+		ProviderReachable: true,
+		UsingSavedAPIKey:  usingSavedAPIKey,
+		Models:            make([]string, 0),
+	}
+
+	modelsResult, err := service.aiProviderClient.listModels(ctx, normalizedBaseURL, apiKey, modelName)
+	if err != nil {
+		var completionErr *aiProviderCompletionError
+		if errors.As(err, &completionErr) {
+			modelListResult.ProviderReachable = completionErr.providerReachable
+			modelListResult.Message = completionErr.message
+			modelListResult.APIStyle = service.resolveCachedOrCurrentAPIStyle(normalizedBaseURL, modelName)
+
+			return &dto.ListAIModelsResponse{
+				Result: modelListResult,
+			}, nil
+		}
+
+		return nil, err
+	}
+
+	modelListResult.Models = modelsResult.models
+	modelListResult.APIStyle = string(modelsResult.apiStyle)
+	switch {
+	case len(modelsResult.models) == 0:
+		modelListResult.Message = "Provider 已连通，但未返回可用模型列表，可继续手动填写模型名称"
+	default:
+		modelListResult.Message = fmt.Sprintf("已成功拉取 %d 个模型，可点击下方候选快速填入", len(modelsResult.models))
+	}
+
+	return &dto.ListAIModelsResponse{
+		Result: modelListResult,
 	}, nil
 }
 
@@ -263,4 +323,12 @@ func buildAISettingsTestMessages() []aiChatMessage {
 			Content: "Return OK only.",
 		},
 	}
+}
+
+func (service *settingsService) resolveCachedOrCurrentAPIStyle(baseURL string, modelName string) string {
+	if capability, exists := service.aiProviderClient.capabilityCache.get(baseURL, modelName); exists {
+		return string(capability.apiStyle)
+	}
+
+	return ""
 }

@@ -4,6 +4,8 @@ import { apiClient } from './client';
 import type { ApiResponse } from '../types/api';
 import type {
   GetAISettingsResponseData,
+  ListAIModelsRequest,
+  ListAIModelsResponseData,
   TestAISettingsRequest,
   TestAISettingsResponseData,
   UpdateAISettingsRequest,
@@ -30,5 +32,13 @@ export async function updateAISettings(payload: UpdateAISettingsRequest): Promis
 // 返回值：Provider 连通性与模型可用性测试结果。
 export async function testAISettings(payload: TestAISettingsRequest): Promise<TestAISettingsResponseData> {
   const { data } = await apiClient.post<ApiResponse<TestAISettingsResponseData>>('/settings/ai/test', payload);
+  return data.data;
+}
+
+// fetchAIModels - 拉取当前表单对应 Provider 的模型列表。
+// 参数 payload: 当前准备拉取模型列表的 Provider 配置。
+// 返回值：可用于设置页建议选择的模型列表结果。
+export async function fetchAIModels(payload: ListAIModelsRequest): Promise<ListAIModelsResponseData> {
+  const { data } = await apiClient.post<ApiResponse<ListAIModelsResponseData>>('/settings/ai/models', payload);
   return data.data;
 }

@@ -1,12 +1,14 @@
 ﻿// AISettingsCard.tsx - 渲染设置页中的 AI Provider 配置表单卡片
-import { Alert, AlertDescription, AlertTitle } from '../../../components/ui/Alert';
+import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
-import type { AISettingsTestResult } from '../../../types/settings';
+import type { AISettingsModelListResult, AISettingsTestResult } from '../../../types/settings';
 import { AISettingsDebugPanel } from './AISettingsDebugPanel';
+import { AISettingsModelSuggestions } from './AISettingsModelSuggestions';
+import { AISettingsTestResultAlert } from './AISettingsTestResultAlert';
 
 export interface AISettingsCardProps {
   baseURL: string;
@@ -17,12 +19,16 @@ export interface AISettingsCardProps {
   errorMessage: string;
   isSaving: boolean;
   isTesting: boolean;
+  isFetchingModels: boolean;
   testResult: AISettingsTestResult | null;
+  modelListResult: AISettingsModelListResult | null;
   onChangeBaseURL: (value: string) => void;
   onChangeModel: (value: string) => void;
   onChangeAPIKey: (value: string) => void;
   onSave: () => Promise<void>;
   onTestConnection: () => Promise<void>;
+  onFetchModels: () => Promise<void>;
+  onSelectModel: (value: string) => void;
 }
 
 /**
@@ -39,12 +45,16 @@ export function AISettingsCard({
   errorMessage,
   isSaving,
   isTesting,
+  isFetchingModels,
   testResult,
+  modelListResult,
   onChangeBaseURL,
   onChangeModel,
   onChangeAPIKey,
   onSave,
   onTestConnection,
+  onFetchModels,
+  onSelectModel,
 }: AISettingsCardProps) {
   return (
     <Card className="shadow-none">
@@ -63,17 +73,7 @@ export function AISettingsCard({
           </Alert>
         ) : null}
 
-        {testResult ? (
-          <Alert variant={testResult.provider_reachable && testResult.model_available ? 'default' : 'destructive'}>
-            <AlertTitle>{testResult.provider_reachable && testResult.model_available ? '测试通过' : '测试未通过'}</AlertTitle>
-            <AlertDescription>
-              <span className="block">{testResult.message}</span>
-              <span className="mt-1 block">标准地址：{testResult.base_url}</span>
-              <span className="mt-1 block">测试模型：{testResult.model}</span>
-              {testResult.using_saved_api_key ? <span className="mt-1 block">本次测试沿用了已保存的 API Key。</span> : null}
-            </AlertDescription>
-          </Alert>
-        ) : null}
+        {testResult ? <AISettingsTestResultAlert testResult={testResult} /> : null}
 
         {testResult?.debug ? <AISettingsDebugPanel debugInfo={testResult.debug} /> : null}
 
@@ -88,15 +88,32 @@ export function AISettingsCard({
           />
         </FormField>
 
-        <FormField htmlFor="ai-model" label="Model" message="建议填写可直接用于 Chat Completions 的模型名。">
-          <Input
-            autoComplete="off"
-            id="ai-model"
-            onChange={(event) => onChangeModel(event.target.value)}
-            placeholder="gpt-4.1-mini"
-            spellCheck={false}
-            value={model}
-          />
+        <FormField htmlFor="ai-model" label="Model" message="建议先点击“拉取模型”获取候选列表，也仍然支持手动输入任意模型名。">
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                autoComplete="off"
+                className="flex-1"
+                id="ai-model"
+                onChange={(event) => onChangeModel(event.target.value)}
+                placeholder="gpt-4.1-mini"
+                spellCheck={false}
+                value={model}
+              />
+              <Button
+                className="w-auto shrink-0"
+                disabled={isSaving || isTesting}
+                isLoading={isFetchingModels}
+                onClick={() => void onFetchModels()}
+                type="button"
+                variant="secondary"
+              >
+                拉取模型
+              </Button>
+            </div>
+
+            <AISettingsModelSuggestions currentModel={model} onSelectModel={onSelectModel} result={modelListResult} />
+          </div>
         </FormField>
 
         <FormField
@@ -118,7 +135,7 @@ export function AISettingsCard({
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             className="w-auto"
-            disabled={isSaving}
+            disabled={isSaving || isFetchingModels}
             isLoading={isTesting}
             onClick={() => void onTestConnection()}
             type="button"
@@ -126,7 +143,7 @@ export function AISettingsCard({
           >
             测试连接
           </Button>
-          <Button className="w-auto" disabled={isTesting} isLoading={isSaving} onClick={() => void onSave()} type="button">
+          <Button className="w-auto" disabled={isTesting || isFetchingModels} isLoading={isSaving} onClick={() => void onSave()} type="button">
             保存 AI 设置
           </Button>
         </div>
