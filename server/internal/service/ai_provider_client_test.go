@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -169,5 +170,89 @@ func TestAIProviderClientRequestCompletionClassifiesTimeout(t *testing.T) {
 
 	if completionErr.providerReachable {
 		t.Fatal("超时时 Provider 不应视为可达")
+	}
+}
+
+func TestAIProviderClientRequestCompletionStreamSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "text/event-stream")
+		_, _ = writer.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"你\"}}]}\n\n"))
+		_, _ = writer.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"好\"}}]}\n\n"))
+		_, _ = writer.Write([]byte("data: [DONE]\n\n"))
+	}))
+	defer server.Close()
+
+	baseURL, err := util.NormalizeAIProviderBaseURL(server.URL)
+	if err != nil {
+		t.Fatalf("归一化测试服务地址失败: %v", err)
+	}
+
+	client := newAIProviderClient(time.Second)
+	deltas := make([]string, 0, 2)
+	content, err := client.requestCompletionStream(
+		context.Background(),
+		&aiProviderCredentials{
+			baseURL: baseURL,
+			apiKey:  "sk-test",
+			model:   "gpt-4.1-mini",
+		},
+		buildAISettingsTestMessages(),
+		0,
+		aiProbeMaxTokens,
+		func(delta string) error {
+			deltas = append(deltas, delta)
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("流式请求应成功，实际报错: %v", err)
+	}
+
+	if content != "你好" {
+		t.Fatalf("流式拼接结果不正确: %s", content)
+	}
+
+	if !slices.Equal(deltas, []string{"你", "好"}) {
+		t.Fatalf("流式增量回调结果不正确: %#v", deltas)
+	}
+}
+
+func TestAIProviderClientRequestCompletionStreamRejectsInvalidPayload(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "text/event-stream")
+		_, _ = writer.Write([]byte("data: not-json\n\n"))
+		_, _ = writer.Write([]byte("data: [DONE]\n\n"))
+	}))
+	defer server.Close()
+
+	baseURL, err := util.NormalizeAIProviderBaseURL(server.URL)
+	if err != nil {
+		t.Fatalf("归一化测试服务地址失败: %v", err)
+	}
+
+	client := newAIProviderClient(time.Second)
+	_, err = client.requestCompletionStream(
+		context.Background(),
+		&aiProviderCredentials{
+			baseURL: baseURL,
+			apiKey:  "sk-test",
+			model:   "gpt-4.1-mini",
+		},
+		buildAISettingsTestMessages(),
+		0,
+		aiProbeMaxTokens,
+		nil,
+	)
+	if err == nil {
+		t.Fatal("流式返回非法 JSON 时应报错")
+	}
+
+	var completionErr *aiProviderCompletionError
+	if !errors.As(err, &completionErr) {
+		t.Fatalf("应返回 aiProviderCompletionError，实际为: %T", err)
+	}
+
+	if completionErr.kind != aiProviderCompletionErrorKindInvalidPayload {
+		t.Fatalf("错误类型不正确: %s", completionErr.kind)
 	}
 }

@@ -44,11 +44,11 @@
 
 ## 5. 编辑器选区 AI 助手闭环
 
-由于传统 Markdown 编辑器往往只能做整篇 AI 处理或缺少可控的局部工作流，通过在 CodeMirror 选区上构建悬浮快捷入口、用户级 OpenAI Compatible 配置页与服务端加密代理，实现了面向 Markdown 文段的局部润色与双语翻译闭环，并支持替换、插入、复制三种结果回填动作。
+由于传统 Markdown 编辑器往往只能做整篇 AI 处理或缺少可控的局部工作流，通过在 CodeMirror 选区上构建悬浮快捷入口、用户级 OpenAI Compatible 配置页与服务端加密代理，实现了面向 Markdown 文段的局部润色与目标语言翻译闭环，并支持替换、插入、复制三种结果回填动作。
 
 > 原因：如果只在编辑器里放一个全局 AI 按钮，不仅会破坏“局部处理”的即时性，也很难兼顾配置安全、选区上下文控制和 Markdown 结构保留。
 >
-> 具体操作：新增受保护设置页维护 `baseURL`、`apiKey`、`model`，服务端对 `apiKey` 做 AES-GCM 加密并统一代理 OpenAI Compatible `chat/completions`；编辑器侧通过 CodeMirror 选区监听生成悬浮“魔法笔 / 中英翻译”入口，在对话框中完成 prompt 输入、语言配置、结果预览以及替换 / 插入 / 复制回填；翻译链路统一输出双语 Markdown，保证写回格式稳定。
+> 具体操作：新增受保护设置页维护 `baseURL`、`apiKey`、`model`，服务端对 `apiKey` 做 AES-GCM 加密并统一代理 OpenAI Compatible `chat/completions`；编辑器侧通过 CodeMirror 选区监听生成悬浮“魔法笔 / 中英翻译”入口，在对话框中完成 prompt 输入、语言配置、结果预览以及替换 / 插入 / 复制回填；翻译链路保留目标语言译文与 Markdown 结构，保证写回内容简洁稳定。
 >
 > 涉及文件：`server/internal/service/settings_service.go`、`server/internal/service/ai_service.go`、`server/internal/util/encryption.go`、`web/src/features/settings/SettingsPage.tsx`、`web/src/features/editor/useEditorSelectionAI.ts`、`web/src/features/editor/components/EditorMagicEditDialog.tsx`、`web/src/features/editor/components/EditorTranslateDialog.tsx`、`docs/45-editor-selection-ai.md`
 
@@ -61,3 +61,13 @@
 > 具体操作：后端新增 `POST /api/v1/settings/ai/test`，使用当前 `baseURL / apiKey / model` 发起轻量 `chat/completions` 请求，并结构化返回 `provider_reachable`、`model_available` 与可读失败原因；前端设置页补“测试连接”按钮和结果态展示，并支持在未输入新密钥时沿用已保存 API Key 测试；编辑器侧把“魔法笔 / 中英翻译”改成横向悬浮入口，并在按钮 `onMouseDown` 阶段阻止焦点转移，修复点击后没有反应的问题。
 >
 > 涉及文件：`server/internal/service/ai_provider_client.go`、`server/internal/service/settings_service.go`、`server/internal/handler/settings_handler.go`、`web/src/features/settings/useAISettingsForm.ts`、`web/src/features/settings/components/AISettingsCard.tsx`、`web/src/features/editor/components/EditorSelectionActions.tsx`、`docs/46-ai-settings-connectivity-test.md`
+
+## 7. 编辑器局部 AI 流式输出与端到端中断
+
+由于局部 AI 在处理较长选中文段时一次性等待完整返回会放大空窗时间，且用户在结果跑偏时缺少及时止损能力，通过新增服务端 SSE 流式接口、前端 `fetch + ReadableStream` 增量消费与 `AbortController` 端到端取消，将魔法笔与翻译改造成可实时预览、可主动中断的交互链路，显著提升了长文本处理的反馈速度与可控性。
+
+> 原因：原有局部 AI 只能在上游完全返回后一次性展示结果，长文段下用户只能被动等待；一旦 prompt 方向不对，也没有办法在生成过程中及时停止并重新尝试。
+>
+> 具体操作：后端新增 `/api/v1/ai/magic-edit/stream` 与 `/api/v1/ai/translate/stream` 两个 `text/event-stream` 接口，直接透传 OpenAI Compatible `stream=true` 增量结果，并在浏览器中断时同步取消上游请求；前端补充支持 401 自动刷新的流式 `fetch` 封装，按 `chunk / done / error` 事件驱动结果区实时刷新；同时把翻译结果从双语 Markdown 收敛为纯译文，只在完成后开放复制、插入、替换动作，避免半成品误写回文档。
+>
+> 涉及文件：`server/internal/service/ai_provider_client.go`、`server/internal/service/ai_service.go`、`server/internal/handler/ai_handler.go`、`web/src/api/client.ts`、`web/src/api/ai.ts`、`web/src/features/editor/useEditorSelectionAI.ts`、`web/src/features/editor/components/EditorMagicEditDialog.tsx`、`web/src/features/editor/components/EditorTranslateDialog.tsx`、`docs/49-ai-streaming-and-abort.md`

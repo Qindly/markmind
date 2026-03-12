@@ -2,7 +2,6 @@
 package util
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -59,25 +58,4 @@ func MaskSecretValue(value string) string {
 	}
 
 	return trimmedValue[:4] + strings.Repeat("*", len(trimmedValue)-8) + trimmedValue[len(trimmedValue)-4:]
-}
-
-// BuildBilingualMarkdownResult - 组装翻译结果对应的双语 Markdown 片段。
-// 参数 originalText: 原始选中文段。
-// 参数 translatedText: AI 返回的目标语言文本。
-// 参数 detectedSourceLanguage: 检测出的原语言名称。
-// 参数 targetLanguage: 目标语言名称。
-// 返回值：可直接写回文档的双语 Markdown 文本。
-func BuildBilingualMarkdownResult(
-	originalText string,
-	translatedText string,
-	detectedSourceLanguage string,
-	targetLanguage string,
-) string {
-	return fmt.Sprintf(
-		"### 原文（%s）\n\n%s\n\n### 译文（%s）\n\n%s",
-		detectedSourceLanguage,
-		strings.TrimSpace(originalText),
-		targetLanguage,
-		strings.TrimSpace(translatedText),
-	)
 }

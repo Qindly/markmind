@@ -63,7 +63,9 @@ func NewRouter(
 		protected.PUT("/settings/ai", settingsHandler.UpdateAISettings)
 		protected.POST("/settings/ai/test", settingsHandler.TestAISettings)
 		protected.POST("/ai/magic-edit", aiHandler.MagicEdit)
+		protected.POST("/ai/magic-edit/stream", aiHandler.MagicEditStream)
 		protected.POST("/ai/translate", aiHandler.Translate)
+		protected.POST("/ai/translate/stream", aiHandler.TranslateStream)
 	}
 
 	auth := api.Group("/auth")

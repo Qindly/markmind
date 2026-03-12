@@ -11,6 +11,7 @@ import {
 import { Button } from '../../../components/ui/Button';
 import { FormField } from '../../../components/ui/FormField';
 import { Textarea } from '../../../components/ui/Textarea';
+import type { AIRequestStatus } from '../../../types/ai';
 
 export interface EditorMagicEditDialogProps {
   open: boolean;
@@ -18,10 +19,11 @@ export interface EditorMagicEditDialogProps {
   instruction: string;
   result: string;
   errorMessage: string;
-  isSubmitting: boolean;
+  status: AIRequestStatus;
   onInstructionChange: (value: string) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => Promise<void>;
+  onAbort: () => void;
   onApplyReplace: () => Promise<void>;
   onApplyInsert: () => Promise<void>;
   onCopy: () => Promise<void>;
@@ -38,14 +40,27 @@ export function EditorMagicEditDialog({
   instruction,
   result,
   errorMessage,
-  isSubmitting,
+  status,
   onInstructionChange,
   onOpenChange,
   onSubmit,
+  onAbort,
   onApplyReplace,
   onApplyInsert,
   onCopy,
 }: EditorMagicEditDialogProps) {
+  const isStreaming = status === 'streaming';
+  const hasCompleted = status === 'completed';
+  const resultMessage =
+    status === 'streaming'
+      ? '正在实时生成结果，可以随时中断。'
+      : status === 'aborted'
+        ? '本次生成已中断，下方内容仅为未完成结果，如需写回文档请重新处理。'
+        : hasCompleted
+          ? 'AI 结果已生成完成，可以直接复制、插入或替换。'
+          : '提交后会在这里展示 AI 结果。';
+  const submitButtonLabel = status === 'aborted' || result ? '重新处理' : '开始处理';
+
   return (
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent className="max-w-3xl">
@@ -70,13 +85,14 @@ export function EditorMagicEditDialog({
           <FormField label="自定义指令" message="例如：帮我润色成更专业的表达、保留列表结构并压缩为 3 点总结。">
             <Textarea
               className="min-h-[140px]"
+              disabled={isStreaming}
               onChange={(event) => onInstructionChange(event.target.value)}
               placeholder="请输入希望 AI 如何处理这段内容..."
               value={instruction}
             />
           </FormField>
 
-          <FormField label="AI 返回结果" message="魔法笔会尽量保留 Markdown 语义，返回的内容可以直接替换或插入。">
+          <FormField label="AI 返回结果" message={resultMessage}>
             <div className="min-h-[160px] rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-4 py-3 text-sm leading-7 text-[var(--color-text-primary)]">
               {result ? <pre className="whitespace-pre-wrap break-words font-sans">{result}</pre> : <p className="text-[var(--color-text-secondary)]">提交后会在这里展示 AI 结果。</p>}
             </div>
@@ -87,7 +103,11 @@ export function EditorMagicEditDialog({
           <Button onClick={() => onOpenChange(false)} type="button" variant="secondary">
             取消
           </Button>
-          {result ? (
+          {isStreaming ? (
+            <Button onClick={onAbort} type="button" variant="secondary">
+              中断生成
+            </Button>
+          ) : hasCompleted ? (
             <>
               <Button onClick={() => void onCopy()} type="button" variant="secondary">
                 复制
@@ -100,8 +120,8 @@ export function EditorMagicEditDialog({
               </Button>
             </>
           ) : (
-            <Button isLoading={isSubmitting} onClick={() => void onSubmit()} type="button">
-              开始处理
+            <Button onClick={() => void onSubmit()} type="button">
+              {submitButtonLabel}
             </Button>
           )}
         </AlertDialogFooter>

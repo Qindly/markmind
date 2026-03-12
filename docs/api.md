@@ -668,7 +668,7 @@
 }
 ```
 
-### 局部双语翻译
+### 局部翻译
 
 - **请求方式**：POST
 - **路由**：`/api/v1/ai/translate`
@@ -686,6 +686,10 @@
 | context_before | body(json) | string | 否 | 选区前方的少量上下文 |
 | context_after | body(json) | string | 否 | 选区后方的少量上下文 |
 
+- **返回说明**：
+  - 服务端只返回目标语言译文，不再拼接双语 Markdown。
+  - 如果前端需要保留原文，可直接继续使用编辑器当前选区内容。
+
 #### 返回样例
 
 **成功（200）**：
@@ -694,11 +698,8 @@
   "code": 0,
   "message": "success",
   "data": {
-    "original_text": "Hello, world!",
     "translated_text": "你好，世界！",
-    "detected_source_language": "English",
-    "target_language": "中文",
-    "bilingual_markdown_result": "### 原文（English）\n\nHello, world!\n\n### 译文（中文）\n\n你好，世界！"
+    "target_language": "中文"
   }
 }
 ```
@@ -709,6 +710,83 @@
   "code": 50002,
   "message": "AI 服务调用失败，请稍后重试"
 }
+```
+
+### 魔法笔局部改写（流式）
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/magic-edit/stream`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| instruction | body(json) | string | 是 | 用户输入的魔法笔指令 |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+- **响应格式**：`text/event-stream`
+- **事件说明**：
+  - `event: chunk`：返回本次增量内容，`data` 结构为 `{"delta":"..."}`。
+  - `event: done`：返回最终完整结果，`data` 结构为 `{"result":"..."}`。
+  - `event: error`：返回流式处理中的错误，`data` 结构为 `{"message":"..."}`。
+  - 当前端中断请求或关闭页面时，服务端会同步取消上游 Provider 请求。
+
+#### 返回样例
+
+**成功（200，SSE）**：
+```text
+event: chunk
+data: {"delta":"## React Hooks 速记\n\n"}
+
+event: chunk
+data: {"delta":"- useEffect 用于同步副作用"}
+
+event: done
+data: {"result":"## React Hooks 速记\n\n- useEffect 用于同步副作用"}
+```
+
+### 局部翻译（流式）
+
+- **请求方式**：POST
+- **路由**：`/api/v1/ai/translate/stream`
+- **是否需要鉴权**：是
+
+#### 请求参数
+
+| 参数名 | 位置 | 类型 | 必须 | 说明 |
+|--------|------|------|------|------|
+| Authorization | header | string | 是 | `Bearer <access_token>` |
+| document_id | body(json) | number | 是 | 当前文档 ID |
+| selected_text | body(json) | string | 是 | 当前选中的 Markdown 文段 |
+| source_language | body(json) | string | 否 | 原语言名称；传 `auto` 表示自动检测 |
+| target_language | body(json) | string | 是 | 目标语言名称，默认可传 `中文` |
+| context_before | body(json) | string | 否 | 选区前方的少量上下文 |
+| context_after | body(json) | string | 否 | 选区后方的少量上下文 |
+
+- **响应格式**：`text/event-stream`
+- **事件说明**：
+  - `event: chunk`：返回本次译文增量，`data` 结构为 `{"delta":"..."}`。
+  - `event: done`：返回最终完整译文，`data` 结构为 `{"translated_text":"...","target_language":"中文"}`。
+  - `event: error`：返回流式处理中的错误，`data` 结构为 `{"message":"..."}`。
+  - 当前端中断请求或关闭页面时，服务端会同步取消上游 Provider 请求。
+
+#### 返回样例
+
+**成功（200，SSE）**：
+```text
+event: chunk
+data: {"delta":"你好，"}
+
+event: chunk
+data: {"delta":"世界！"}
+
+event: done
+data: {"translated_text":"你好，世界！","target_language":"中文"}
 ```
 
 ### 搜索文档

@@ -174,7 +174,7 @@ export function EditorWorkspace({
       <EditorMagicEditDialog
         errorMessage={selectionAI.magicErrorMessage}
         instruction={selectionAI.magicInstruction}
-        isSubmitting={selectionAI.isSubmittingMagicEdit}
+        onAbort={selectionAI.handleAbortMagicEdit}
         onApplyInsert={selectionAI.handleApplyMagicEditInsert}
         onApplyReplace={selectionAI.handleApplyMagicEditReplace}
         onCopy={selectionAI.handleCopyMagicEditResult}
@@ -184,11 +184,12 @@ export function EditorWorkspace({
         open={selectionAI.isMagicEditDialogOpen}
         result={selectionAI.magicResult}
         selectedText={selectionAI.selectedText}
+        status={selectionAI.magicStatus}
       />
 
       <EditorTranslateDialog
         errorMessage={selectionAI.translateErrorMessage}
-        isSubmitting={selectionAI.isSubmittingTranslate}
+        onAbort={selectionAI.handleAbortTranslate}
         onApplyInsert={selectionAI.handleApplyTranslateInsert}
         onApplyReplace={selectionAI.handleApplyTranslateReplace}
         onChangeSourceLanguage={selectionAI.handleTranslateSourceLanguageChange}
@@ -200,6 +201,7 @@ export function EditorWorkspace({
         result={selectionAI.translateResult}
         selectedText={selectionAI.selectedText}
         sourceLanguage={selectionAI.translateSourceLanguage}
+        status={selectionAI.translateStatus}
         targetLanguage={selectionAI.translateTargetLanguage}
       />
     </main>

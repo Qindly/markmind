@@ -24,11 +24,20 @@ func TestNormalizeAIProviderBaseURLKeepsV1(t *testing.T) {
 	}
 }
 
-func TestBuildBilingualMarkdownResult(t *testing.T) {
-	result := BuildBilingualMarkdownResult("Hello", "你好", "English", "中文")
-	expected := "### 原文（English）\n\nHello\n\n### 译文（中文）\n\n你好"
+func TestBuildAIChatCompletionsURL(t *testing.T) {
+	result := BuildAIChatCompletionsURL("https://example.com/v1/")
+	expected := "https://example.com/v1/chat/completions"
 
 	if result != expected {
-		t.Fatalf("双语 Markdown 结果不正确: %s", result)
+		t.Fatalf("Chat Completions 地址拼接结果不正确: %s", result)
+	}
+}
+
+func TestMaskSecretValue(t *testing.T) {
+	result := MaskSecretValue("sk-test-secret-value")
+	expected := "sk-t************alue"
+
+	if result != expected {
+		t.Fatalf("脱敏结果不正确: %s", result)
 	}
 }

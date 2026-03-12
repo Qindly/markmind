@@ -27,9 +27,16 @@ type TranslateRequest struct {
 
 // TranslateResponse - 局部翻译返回数据。
 type TranslateResponse struct {
-	OriginalText            string `json:"original_text"`
-	TranslatedText          string `json:"translated_text"`
-	DetectedSourceLanguage  string `json:"detected_source_language"`
-	TargetLanguage          string `json:"target_language"`
-	BilingualMarkdownResult string `json:"bilingual_markdown_result"`
+	TranslatedText string `json:"translated_text"`
+	TargetLanguage string `json:"target_language"`
+}
+
+// AIStreamChunkResponse - 流式增量事件的数据结构。
+type AIStreamChunkResponse struct {
+	Delta string `json:"delta"`
+}
+
+// AIStreamErrorResponse - 流式错误事件的数据结构。
+type AIStreamErrorResponse struct {
+	Message string `json:"message"`
 }

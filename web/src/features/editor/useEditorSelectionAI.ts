@@ -1,13 +1,13 @@
-﻿// useEditorSelectionAI.ts - 管理编辑器选区 AI 浮层、弹窗与结果回填流程
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿// useEditorSelectionAI.ts - 管理编辑器选区 AI 浮层、弹窗、流式结果与写回流程
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useNavigate } from 'react-router-dom';
 
-import { requestMagicEdit, requestTranslation } from '../../api/ai';
+import { streamMagicEdit, streamTranslation } from '../../api/ai';
 import { fetchAISettings } from '../../api/settings';
 import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
-import type { TranslateResponseData } from '../../types/ai';
+import type { AIRequestStatus } from '../../types/ai';
 import type { DocumentDetail } from '../../types/document';
 import { applyAITextToEditor, buildEditorSelectionSnapshot, type AIApplyMode, type EditorSelectionSnapshot } from './selectionAI';
 
@@ -23,12 +23,12 @@ export interface UseEditorSelectionAIResult {
   magicInstruction: string;
   magicResult: string;
   magicErrorMessage: string;
-  isSubmittingMagicEdit: boolean;
+  magicStatus: AIRequestStatus;
   translateSourceLanguage: string;
   translateTargetLanguage: string;
-  translateResult: TranslateResponseData | null;
+  translateResult: string;
   translateErrorMessage: string;
-  isSubmittingTranslate: boolean;
+  translateStatus: AIRequestStatus;
   selectedText: string;
   handleEditorReady: (view: EditorView) => void;
   handleSelectionChange: (view: EditorView) => void;
@@ -41,6 +41,8 @@ export interface UseEditorSelectionAIResult {
   handleTranslateDialogOpenChange: (open: boolean) => void;
   handleSubmitMagicEdit: () => Promise<void>;
   handleSubmitTranslate: () => Promise<void>;
+  handleAbortMagicEdit: () => void;
+  handleAbortTranslate: () => void;
   handleApplyMagicEditReplace: () => Promise<void>;
   handleApplyMagicEditInsert: () => Promise<void>;
   handleCopyMagicEditResult: () => Promise<void>;
@@ -52,6 +54,20 @@ export interface UseEditorSelectionAIResult {
 const DEFAULT_TRANSLATE_SOURCE_LANGUAGE = 'auto';
 const DEFAULT_TRANSLATE_TARGET_LANGUAGE = '中文';
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+function disposeActiveRequest(controllerRef: MutableRefObject<AbortController | null>): void {
+  const activeController = controllerRef.current;
+  if (!activeController) {
+    return;
+  }
+
+  controllerRef.current = null;
+  activeController.abort();
+}
+
 /**
  * useEditorSelectionAI - 管理编辑器选区 AI 浮层、弹窗与结果回填流程。
  * 参数 document: 当前打开的文档详情。
@@ -60,6 +76,8 @@ const DEFAULT_TRANSLATE_TARGET_LANGUAGE = '中文';
 export function useEditorSelectionAI(document: DocumentDetail | null): UseEditorSelectionAIResult {
   const navigate = useNavigate();
   const editorViewRef = useRef<EditorView | null>(null);
+  const magicEditAbortControllerRef = useRef<AbortController | null>(null);
+  const translateAbortControllerRef = useRef<AbortController | null>(null);
   const [selectionSnapshot, setSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
   const [dialogSelectionSnapshot, setDialogSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
   const [isMagicEditDialogOpen, setIsMagicEditDialogOpen] = useState(false);
@@ -67,12 +85,12 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
   const [magicInstruction, setMagicInstruction] = useState('');
   const [magicResult, setMagicResult] = useState('');
   const [magicErrorMessage, setMagicErrorMessage] = useState('');
-  const [isSubmittingMagicEdit, setIsSubmittingMagicEdit] = useState(false);
+  const [magicStatus, setMagicStatus] = useState<AIRequestStatus>('idle');
   const [translateSourceLanguage, setTranslateSourceLanguage] = useState(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
   const [translateTargetLanguage, setTranslateTargetLanguage] = useState(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
-  const [translateResult, setTranslateResult] = useState<TranslateResponseData | null>(null);
+  const [translateResult, setTranslateResult] = useState('');
   const [translateErrorMessage, setTranslateErrorMessage] = useState('');
-  const [isSubmittingTranslate, setIsSubmittingTranslate] = useState(false);
+  const [translateStatus, setTranslateStatus] = useState<AIRequestStatus>('idle');
   const [isAIConfigured, setIsAIConfigured] = useState<boolean | null>(null);
 
   const updateSelectionSnapshot = useCallback(
@@ -110,19 +128,26 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
     };
   }, [isMagicEditDialogOpen, isTranslateDialogOpen, updateSelectionSnapshot]);
 
+  useEffect(() => {
+    return () => {
+      disposeActiveRequest(magicEditAbortControllerRef);
+      disposeActiveRequest(translateAbortControllerRef);
+    };
+  }, []);
+
   function resetMagicEditState() {
     setMagicInstruction('');
     setMagicResult('');
     setMagicErrorMessage('');
-    setIsSubmittingMagicEdit(false);
+    setMagicStatus('idle');
   }
 
   function resetTranslateState() {
     setTranslateSourceLanguage(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
     setTranslateTargetLanguage(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
-    setTranslateResult(null);
+    setTranslateResult('');
     setTranslateErrorMessage('');
-    setIsSubmittingTranslate(false);
+    setTranslateStatus('idle');
   }
 
   function clearDialogSelection() {
@@ -164,12 +189,14 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
   }
 
   function closeMagicEditDialog() {
+    disposeActiveRequest(magicEditAbortControllerRef);
     setIsMagicEditDialogOpen(false);
     clearDialogSelection();
     resetMagicEditState();
   }
 
   function closeTranslateDialog() {
+    disposeActiveRequest(translateAbortControllerRef);
     setIsTranslateDialogOpen(false);
     clearDialogSelection();
     resetTranslateState();
@@ -180,6 +207,7 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
       return;
     }
 
+    disposeActiveRequest(magicEditAbortControllerRef);
     resetMagicEditState();
     setDialogSelectionSnapshot(selectionSnapshot);
     setSelectionSnapshot(null);
@@ -191,6 +219,7 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
       return;
     }
 
+    disposeActiveRequest(translateAbortControllerRef);
     resetTranslateState();
     setDialogSelectionSnapshot(selectionSnapshot);
     setSelectionSnapshot(null);
@@ -198,51 +227,121 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
   }
 
   async function handleSubmitMagicEdit() {
-    if (!dialogSelectionSnapshot || !document) {
+    if (!dialogSelectionSnapshot || !document || magicStatus === 'streaming') {
       return;
     }
 
-    setIsSubmittingMagicEdit(true);
+    disposeActiveRequest(magicEditAbortControllerRef);
+
+    const requestController = new AbortController();
+    magicEditAbortControllerRef.current = requestController;
+    setMagicStatus('streaming');
     setMagicErrorMessage('');
+    setMagicResult('');
 
     try {
-      const response = await requestMagicEdit({
-        document_id: document.id,
-        selected_text: dialogSelectionSnapshot.text,
-        instruction: magicInstruction,
-        context_before: dialogSelectionSnapshot.contextBefore,
-        context_after: dialogSelectionSnapshot.contextAfter,
-      });
+      const response = await streamMagicEdit(
+        {
+          document_id: document.id,
+          selected_text: dialogSelectionSnapshot.text,
+          instruction: magicInstruction,
+          context_before: dialogSelectionSnapshot.contextBefore,
+          context_after: dialogSelectionSnapshot.contextAfter,
+        },
+        {
+          signal: requestController.signal,
+          onChunk: (delta) => {
+            if (magicEditAbortControllerRef.current !== requestController) {
+              return;
+            }
+
+            setMagicResult((currentResult) => currentResult + delta);
+          },
+        },
+      );
+
+      if (magicEditAbortControllerRef.current !== requestController) {
+        return;
+      }
+
       setMagicResult(response.result);
+      setMagicStatus('completed');
     } catch (error) {
+      if (magicEditAbortControllerRef.current !== requestController) {
+        return;
+      }
+
+      if (isAbortError(error)) {
+        setMagicStatus('aborted');
+        return;
+      }
+
+      setMagicStatus('idle');
       setMagicErrorMessage(getErrorMessage(error, '魔法笔处理失败，请稍后重试'));
     } finally {
-      setIsSubmittingMagicEdit(false);
+      if (magicEditAbortControllerRef.current === requestController) {
+        magicEditAbortControllerRef.current = null;
+      }
     }
   }
 
   async function handleSubmitTranslate() {
-    if (!dialogSelectionSnapshot || !document) {
+    if (!dialogSelectionSnapshot || !document || translateStatus === 'streaming') {
       return;
     }
 
-    setIsSubmittingTranslate(true);
+    disposeActiveRequest(translateAbortControllerRef);
+
+    const requestController = new AbortController();
+    translateAbortControllerRef.current = requestController;
+    setTranslateStatus('streaming');
     setTranslateErrorMessage('');
+    setTranslateResult('');
 
     try {
-      const response = await requestTranslation({
-        document_id: document.id,
-        selected_text: dialogSelectionSnapshot.text,
-        source_language: translateSourceLanguage,
-        target_language: translateTargetLanguage,
-        context_before: dialogSelectionSnapshot.contextBefore,
-        context_after: dialogSelectionSnapshot.contextAfter,
-      });
-      setTranslateResult(response);
+      const response = await streamTranslation(
+        {
+          document_id: document.id,
+          selected_text: dialogSelectionSnapshot.text,
+          source_language: translateSourceLanguage,
+          target_language: translateTargetLanguage,
+          context_before: dialogSelectionSnapshot.contextBefore,
+          context_after: dialogSelectionSnapshot.contextAfter,
+        },
+        {
+          signal: requestController.signal,
+          onChunk: (delta) => {
+            if (translateAbortControllerRef.current !== requestController) {
+              return;
+            }
+
+            setTranslateResult((currentResult) => currentResult + delta);
+          },
+        },
+      );
+
+      if (translateAbortControllerRef.current !== requestController) {
+        return;
+      }
+
+      setTranslateResult(response.translated_text);
+      setTranslateStatus('completed');
     } catch (error) {
+      if (translateAbortControllerRef.current !== requestController) {
+        return;
+      }
+
+      if (isAbortError(error)) {
+        setTranslateStatus('aborted');
+        return;
+      }
+
+      setTranslateStatus('idle');
       setTranslateErrorMessage(getErrorMessage(error, '翻译处理失败，请稍后重试'));
     } finally {
-      setIsSubmittingTranslate(false);
+      if (translateAbortControllerRef.current === requestController) {
+        translateAbortControllerRef.current = null;
+      }
     }
   }
 
@@ -283,12 +382,12 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
     magicInstruction,
     magicResult,
     magicErrorMessage,
-    isSubmittingMagicEdit,
+    magicStatus,
     translateSourceLanguage,
     translateTargetLanguage,
     translateResult,
     translateErrorMessage,
-    isSubmittingTranslate,
+    translateStatus,
     selectedText: dialogSelectionSnapshot?.text ?? selectionSnapshot?.text ?? '',
     handleEditorReady,
     handleSelectionChange: updateSelectionSnapshot,
@@ -309,18 +408,22 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
     },
     handleSubmitMagicEdit,
     handleSubmitTranslate,
+    handleAbortMagicEdit: () => {
+      magicEditAbortControllerRef.current?.abort();
+    },
+    handleAbortTranslate: () => {
+      translateAbortControllerRef.current?.abort();
+    },
     handleApplyMagicEditReplace: async () => applyResult(magicResult, 'replace', closeMagicEditDialog),
     handleApplyMagicEditInsert: async () => applyResult(magicResult, 'insert', closeMagicEditDialog),
     handleCopyMagicEditResult: async () => {
       await copyResult(magicResult);
       closeMagicEditDialog();
     },
-    handleApplyTranslateReplace: async () =>
-      applyResult(translateResult?.bilingual_markdown_result ?? '', 'replace', closeTranslateDialog),
-    handleApplyTranslateInsert: async () =>
-      applyResult(translateResult?.bilingual_markdown_result ?? '', 'insert', closeTranslateDialog),
+    handleApplyTranslateReplace: async () => applyResult(translateResult, 'replace', closeTranslateDialog),
+    handleApplyTranslateInsert: async () => applyResult(translateResult, 'insert', closeTranslateDialog),
     handleCopyTranslateResult: async () => {
-      await copyResult(translateResult?.bilingual_markdown_result ?? '');
+      await copyResult(translateResult);
       closeTranslateDialog();
     },
   };

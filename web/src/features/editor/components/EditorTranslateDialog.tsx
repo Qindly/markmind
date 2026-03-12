@@ -11,7 +11,7 @@ import {
 import { Button } from '../../../components/ui/Button';
 import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
-import type { TranslateResponseData } from '../../../types/ai';
+import type { AIRequestStatus } from '../../../types/ai';
 import { translationLanguageSuggestions } from '../translationLanguageSuggestions';
 
 export interface EditorTranslateDialogProps {
@@ -19,13 +19,14 @@ export interface EditorTranslateDialogProps {
   selectedText: string;
   sourceLanguage: string;
   targetLanguage: string;
-  result: TranslateResponseData | null;
+  result: string;
   errorMessage: string;
-  isSubmitting: boolean;
+  status: AIRequestStatus;
   onChangeSourceLanguage: (value: string) => void;
   onChangeTargetLanguage: (value: string) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => Promise<void>;
+  onAbort: () => void;
   onApplyReplace: () => Promise<void>;
   onApplyInsert: () => Promise<void>;
   onCopy: () => Promise<void>;
@@ -43,21 +44,34 @@ export function EditorTranslateDialog({
   targetLanguage,
   result,
   errorMessage,
-  isSubmitting,
+  status,
   onChangeSourceLanguage,
   onChangeTargetLanguage,
   onOpenChange,
   onSubmit,
+  onAbort,
   onApplyReplace,
   onApplyInsert,
   onCopy,
 }: EditorTranslateDialogProps) {
+  const isStreaming = status === 'streaming';
+  const hasCompleted = status === 'completed';
+  const resultMessage =
+    status === 'streaming'
+      ? `正在实时翻译为 ${targetLanguage || '目标语言'}，可以随时中断。`
+      : status === 'aborted'
+        ? '本次翻译已中断，下方内容仅为未完成译文，如需写回文档请重新翻译。'
+        : hasCompleted
+          ? `译文已生成完成，可直接复制、插入或替换为 ${targetLanguage || '目标语言'} 版本。`
+          : '提交后会展示可直接写回文档的译文。';
+  const submitButtonLabel = status === 'aborted' || result ? '重新翻译' : '开始翻译';
+
   return (
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent className="max-w-3xl">
         <AlertDialogHeader>
           <AlertDialogTitle>中英翻译</AlertDialogTitle>
-          <AlertDialogDescription>支持原语言自动检测，结果会生成可直接写回文档的双语对照 Markdown。</AlertDialogDescription>
+          <AlertDialogDescription>支持原语言自动检测，结果会生成保留 Markdown 结构的目标语言译文。</AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
@@ -76,6 +90,7 @@ export function EditorTranslateDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField htmlFor="translate-source-language" label="原语言" message="填写 auto 表示自动检测，也可以直接输入语言名称。">
               <Input
+                disabled={isStreaming}
                 id="translate-source-language"
                 list="translation-language-suggestions"
                 onChange={(event) => onChangeSourceLanguage(event.target.value)}
@@ -85,6 +100,7 @@ export function EditorTranslateDialog({
             </FormField>
             <FormField htmlFor="translate-target-language" label="目标语言" message="默认为中文，也可以输入英文、日文等其它语言名称。">
               <Input
+                disabled={isStreaming}
                 id="translate-target-language"
                 list="translation-language-suggestions"
                 onChange={(event) => onChangeTargetLanguage(event.target.value)}
@@ -100,15 +116,12 @@ export function EditorTranslateDialog({
             ))}
           </datalist>
 
-          <FormField
-            label="双语对照结果"
-            message={result ? `检测语言：${result.detected_source_language} · 目标语言：${result.target_language}` : '提交后会展示双语对照结果。'}
-          >
+          <FormField label="译文结果" message={resultMessage}>
             <div className="min-h-[200px] rounded-2xl border border-[var(--color-border-soft)] bg-[var(--color-page-bg)] px-4 py-3 text-sm leading-7 text-[var(--color-text-primary)]">
               {result ? (
-                <pre className="whitespace-pre-wrap break-words font-sans">{result.bilingual_markdown_result}</pre>
+                <pre className="whitespace-pre-wrap break-words font-sans">{result}</pre>
               ) : (
-                <p className="text-[var(--color-text-secondary)]">AI 翻译完成后，会在这里展示双语对照 Markdown。</p>
+                <p className="text-[var(--color-text-secondary)]">AI 翻译完成后，会在这里展示目标语言译文。</p>
               )}
             </div>
           </FormField>
@@ -118,7 +131,11 @@ export function EditorTranslateDialog({
           <Button onClick={() => onOpenChange(false)} type="button" variant="secondary">
             取消
           </Button>
-          {result ? (
+          {isStreaming ? (
+            <Button onClick={onAbort} type="button" variant="secondary">
+              中断生成
+            </Button>
+          ) : hasCompleted ? (
             <>
               <Button onClick={() => void onCopy()} type="button" variant="secondary">
                 复制
@@ -131,8 +148,8 @@ export function EditorTranslateDialog({
               </Button>
             </>
           ) : (
-            <Button isLoading={isSubmitting} onClick={() => void onSubmit()} type="button">
-              开始翻译
+            <Button onClick={() => void onSubmit()} type="button">
+              {submitButtonLabel}
             </Button>
           )}
         </AlertDialogFooter>

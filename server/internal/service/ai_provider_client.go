@@ -2,6 +2,7 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -54,6 +55,7 @@ type aiChatCompletionRequest struct {
 	Messages    []aiChatMessage `json:"messages"`
 	Temperature float64         `json:"temperature"`
 	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Stream      bool            `json:"stream,omitempty"`
 }
 
 type aiChatCompletionResponse struct {
@@ -61,6 +63,14 @@ type aiChatCompletionResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+	} `json:"choices"`
+}
+
+type aiChatCompletionStreamResponse struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
 	} `json:"choices"`
 }
 
@@ -203,6 +213,86 @@ func (client *aiProviderClient) requestCompletionDetailed(
 	}, nil
 }
 
+// requestCompletionStream - 调用 OpenAI Compatible chat completions 流式接口并持续返回增量文本。
+// 参数 onDelta: 每次收到新的文本增量时触发的回调。
+// 返回值：完整拼接后的文本内容，或带有可读原因的错误。
+func (client *aiProviderClient) requestCompletionStream(
+	ctx context.Context,
+	credentials *aiProviderCredentials,
+	messages []aiChatMessage,
+	temperature float64,
+	maxTokens int,
+	onDelta func(delta string) error,
+) (string, error) {
+	requestBody, err := json.Marshal(aiChatCompletionRequest{
+		Model:       credentials.model,
+		Messages:    messages,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
+		Stream:      true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("序列化 AI 流式请求失败: %w", err)
+	}
+
+	httpRequest, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		util.BuildAIChatCompletionsURL(credentials.baseURL),
+		bytes.NewReader(requestBody),
+	)
+	if err != nil {
+		return "", fmt.Errorf("创建 AI 流式请求失败: %w", err)
+	}
+
+	httpRequest.Header.Set("Authorization", "Bearer "+credentials.apiKey)
+	httpRequest.Header.Set("Content-Type", "application/json")
+	httpRequest.Header.Set("Accept", "text/event-stream")
+
+	httpResponse, err := client.httpClient.Do(httpRequest)
+	if err != nil {
+		return "", buildAIProviderNetworkError(err, nil)
+	}
+	defer httpResponse.Body.Close()
+
+	if httpResponse.StatusCode < http.StatusOK || httpResponse.StatusCode >= http.StatusMultipleChoices {
+		responseBody, readErr := io.ReadAll(io.LimitReader(httpResponse.Body, aiResponseBodyLimit))
+		if readErr != nil {
+			return "", fmt.Errorf("读取 AI 流式错误响应失败: %w", readErr)
+		}
+
+		return "", buildAIProviderHTTPError(httpResponse.StatusCode, responseBody, nil)
+	}
+
+	var contentBuilder strings.Builder
+	if err := consumeAIProviderStream(httpResponse.Body, func(payload string) error {
+		delta, extractErr := extractAIStreamDelta(payload)
+		if extractErr != nil {
+			return &aiProviderCompletionError{
+				kind:              aiProviderCompletionErrorKindInvalidPayload,
+				providerReachable: true,
+				modelAvailable:    false,
+				message:           "Provider 已响应，但流式返回格式不兼容 OpenAI Chat Completions",
+			}
+		}
+
+		if delta == "" {
+			return nil
+		}
+
+		contentBuilder.WriteString(delta)
+		if onDelta != nil {
+			return onDelta(delta)
+		}
+
+		return nil
+	}); err != nil {
+		return "", err
+	}
+
+	return contentBuilder.String(), nil
+}
+
 func buildAIProviderNetworkError(err error, debugInfo *dto.AIProviderDebugInfo) error {
 	message := "无法连接到 Provider，请检查 Base URL、网络或代理设置"
 
@@ -284,7 +374,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte, debugInfo *dt
 			kind:              aiProviderCompletionErrorKindRequestFailed,
 			providerReachable: true,
 			modelAvailable:    false,
-			message:           fmt.Sprintf("Provider 测试失败：%s", upstreamMessage),
+			message:           fmt.Sprintf("Provider 请求失败：%s", upstreamMessage),
 			debug:             debugInfo,
 		}
 	}
@@ -377,6 +467,71 @@ func extractAIProviderErrorMessage(responseBody []byte) string {
 	}
 
 	return "未返回详细错误信息"
+}
+
+func consumeAIProviderStream(reader io.Reader, handlePayload func(payload string) error) error {
+	streamReader := bufio.NewReader(reader)
+	dataLines := make([]string, 0, 4)
+
+	flushEvent := func() error {
+		if len(dataLines) == 0 {
+			return nil
+		}
+
+		payload := strings.Join(dataLines, "\n")
+		dataLines = dataLines[:0]
+		if payload == "[DONE]" {
+			return nil
+		}
+
+		return handlePayload(payload)
+	}
+
+	for {
+		line, err := streamReader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return fmt.Errorf("读取 AI 流式响应失败: %w", err)
+		}
+
+		trimmedLine := strings.TrimRight(line, "\r\n")
+		switch {
+		case trimmedLine == "":
+			if flushErr := flushEvent(); flushErr != nil {
+				return flushErr
+			}
+		case strings.HasPrefix(trimmedLine, "data:"):
+			dataLines = append(dataLines, strings.TrimSpace(strings.TrimPrefix(trimmedLine, "data:")))
+		}
+
+		if errors.Is(err, io.EOF) {
+			break
+		}
+	}
+
+	if err := flushEvent(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func extractAIStreamDelta(payload string) (string, error) {
+	trimmedPayload := strings.TrimSpace(payload)
+	if trimmedPayload == "" {
+		return "", nil
+	}
+
+	var completionResponse aiChatCompletionStreamResponse
+	if err := json.Unmarshal([]byte(trimmedPayload), &completionResponse); err != nil {
+		return "", err
+	}
+
+	var deltaBuilder strings.Builder
+	for _, choice := range completionResponse.Choices {
+		deltaBuilder.WriteString(choice.Delta.Content)
+	}
+
+	return deltaBuilder.String(), nil
 }
 
 func isModelAvailabilityError(statusCode int, message string) bool {

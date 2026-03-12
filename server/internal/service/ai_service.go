@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,14 +14,22 @@ import (
 	"github.com/Qindly/markmind/internal/util"
 )
 
-const (
-	defaultDetectedLanguage = "自动检测"
-)
-
 // AIServicer - 编辑器局部 AI 能力服务接口。
 type AIServicer interface {
 	MagicEdit(ctx context.Context, userID int64, request dto.MagicEditRequest) (*dto.MagicEditResponse, error)
 	Translate(ctx context.Context, userID int64, request dto.TranslateRequest) (*dto.TranslateResponse, error)
+	MagicEditStream(
+		ctx context.Context,
+		userID int64,
+		request dto.MagicEditRequest,
+		onDelta func(delta string) error,
+	) (*dto.MagicEditResponse, error)
+	TranslateStream(
+		ctx context.Context,
+		userID int64,
+		request dto.TranslateRequest,
+		onDelta func(delta string) error,
+	) (*dto.TranslateResponse, error)
 }
 
 type aiService struct {
@@ -30,11 +37,6 @@ type aiService struct {
 	aiProviderSettingRepository repository.AIProviderSettingRepository
 	textEncryptor               *util.TextEncryptor
 	aiProviderClient            *aiProviderClient
-}
-
-type aiTranslateStructuredResponse struct {
-	DetectedSourceLanguage string `json:"detected_source_language"`
-	TranslatedText         string `json:"translated_text"`
 }
 
 // NewAIService - 创建编辑器局部 AI 服务实现。
@@ -142,27 +144,114 @@ func (service *aiService) Translate(
 		return nil, err
 	}
 
-	translateResult, err := decodeTranslateResult(rawResult)
-	if err != nil {
-		return nil, err
-	}
-
-	detectedSourceLanguage := strings.TrimSpace(translateResult.DetectedSourceLanguage)
-	if detectedSourceLanguage == "" {
-		detectedSourceLanguage = defaultDetectedLanguage
-	}
-
-	translatedText := strings.TrimSpace(translateResult.TranslatedText)
+	translatedText := strings.TrimSpace(rawResult)
 	if translatedText == "" {
 		return nil, appconst.ErrAIInvalidResponse
 	}
 
 	return &dto.TranslateResponse{
-		OriginalText:            selectedText,
-		TranslatedText:          translatedText,
-		DetectedSourceLanguage:  detectedSourceLanguage,
-		TargetLanguage:          targetLanguage,
-		BilingualMarkdownResult: util.BuildBilingualMarkdownResult(selectedText, translatedText, detectedSourceLanguage, targetLanguage),
+		TranslatedText: translatedText,
+		TargetLanguage: targetLanguage,
+	}, nil
+}
+
+func (service *aiService) MagicEditStream(
+	ctx context.Context,
+	userID int64,
+	request dto.MagicEditRequest,
+	onDelta func(delta string) error,
+) (*dto.MagicEditResponse, error) {
+	documentTitle, err := service.validateDocumentAndGetTitle(ctx, userID, request.DocumentID)
+	if err != nil {
+		return nil, err
+	}
+
+	selectedText := strings.TrimSpace(request.SelectedText)
+	if selectedText == "" {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	instruction := strings.TrimSpace(request.Instruction)
+	if instruction == "" {
+		return nil, appconst.ErrAIInstructionRequired
+	}
+
+	credentials, err := service.loadAIProviderCredentials(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := service.requestAICompletionStream(
+		ctx,
+		credentials,
+		buildMagicEditMessages(documentTitle, selectedText, instruction, request.ContextBefore, request.ContextAfter),
+		0.35,
+		onDelta,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	trimmedResult := strings.TrimSpace(result)
+	if trimmedResult == "" {
+		return nil, appconst.ErrAIInvalidResponse
+	}
+
+	return &dto.MagicEditResponse{
+		Result: trimmedResult,
+	}, nil
+}
+
+func (service *aiService) TranslateStream(
+	ctx context.Context,
+	userID int64,
+	request dto.TranslateRequest,
+	onDelta func(delta string) error,
+) (*dto.TranslateResponse, error) {
+	documentTitle, err := service.validateDocumentAndGetTitle(ctx, userID, request.DocumentID)
+	if err != nil {
+		return nil, err
+	}
+
+	selectedText := strings.TrimSpace(request.SelectedText)
+	if selectedText == "" {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	targetLanguage := strings.TrimSpace(request.TargetLanguage)
+	if targetLanguage == "" {
+		return nil, appconst.ErrInvalidParams
+	}
+
+	sourceLanguage := strings.TrimSpace(request.SourceLanguage)
+	if sourceLanguage == "" {
+		sourceLanguage = "auto"
+	}
+
+	credentials, err := service.loadAIProviderCredentials(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := service.requestAICompletionStream(
+		ctx,
+		credentials,
+		buildTranslateMessages(documentTitle, selectedText, sourceLanguage, targetLanguage, request.ContextBefore, request.ContextAfter),
+		0.1,
+		onDelta,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	translatedText := strings.TrimSpace(result)
+	if translatedText == "" {
+		return nil, appconst.ErrAIInvalidResponse
+	}
+
+	return &dto.TranslateResponse{
+		TranslatedText: translatedText,
+		TargetLanguage: targetLanguage,
 	}, nil
 }
 
@@ -227,19 +316,19 @@ func (service *aiService) requestAICompletion(
 	return content, nil
 }
 
-func decodeTranslateResult(rawResult string) (*aiTranslateStructuredResponse, error) {
-	normalizedResult := strings.TrimSpace(rawResult)
-	normalizedResult = strings.TrimPrefix(normalizedResult, "```json")
-	normalizedResult = strings.TrimPrefix(normalizedResult, "```")
-	normalizedResult = strings.TrimSuffix(normalizedResult, "```")
-	normalizedResult = strings.TrimSpace(normalizedResult)
-
-	var translateResult aiTranslateStructuredResponse
-	if err := json.Unmarshal([]byte(normalizedResult), &translateResult); err != nil {
-		return nil, fmt.Errorf("%w: %v", appconst.ErrAIInvalidResponse, err)
+func (service *aiService) requestAICompletionStream(
+	ctx context.Context,
+	credentials *aiProviderCredentials,
+	messages []aiChatMessage,
+	temperature float64,
+	onDelta func(delta string) error,
+) (string, error) {
+	content, err := service.aiProviderClient.requestCompletionStream(ctx, credentials, messages, temperature, 0, onDelta)
+	if err != nil {
+		return "", mapAIProviderCompletionError(err)
 	}
 
-	return &translateResult, nil
+	return content, nil
 }
 
 func mapAIProviderCompletionError(err error) error {
@@ -300,9 +389,7 @@ func buildTranslateMessages(
 你是一个 Markdown 文档局部翻译助手。
 你只翻译用户选中的文段，不能输出解释和额外说明。
 你必须尽量保留 Markdown 语义与结构，包括标题、列表、强调、链接、引用、表格和代码块。
-请只返回一个 JSON 对象，不要使用 Markdown 代码块。
-JSON 格式固定为：
-{"detected_source_language":"语言名称","translated_text":"翻译后的文本"}`),
+输出必须是可以直接写回文档的最终译文。`),
 		},
 		{
 			Role: "user",

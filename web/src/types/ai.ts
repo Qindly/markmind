@@ -21,9 +21,16 @@ export interface TranslateRequest {
 }
 
 export interface TranslateResponseData {
-  original_text: string;
   translated_text: string;
-  detected_source_language: string;
   target_language: string;
-  bilingual_markdown_result: string;
 }
+
+export interface AIStreamChunkData {
+  delta: string;
+}
+
+export interface AIStreamErrorData {
+  message: string;
+}
+
+export type AIRequestStatus = 'idle' | 'streaming' | 'completed' | 'aborted';
