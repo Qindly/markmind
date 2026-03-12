@@ -88,3 +88,16 @@ func TestLoadRejectsMissingAIEncryptionSecretInProduction(t *testing.T) {
 		t.Fatal("生产环境缺少 AI_PROVIDER_ENCRYPTION_SECRET 时应返回错误")
 	}
 }
+
+func TestLoadParsesAIProviderDebug(t *testing.T) {
+	t.Setenv("AI_PROVIDER_DEBUG", "true")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("加载配置失败: %v", err)
+	}
+
+	if !config.AIProviderDebug {
+		t.Fatal("AI_PROVIDER_DEBUG=true 时应启用 Provider 调试模式")
+	}
+}

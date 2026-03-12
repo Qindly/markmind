@@ -568,6 +568,7 @@
   - 服务端会对 `base_url` 自动补全 `/v1` 后再发起轻量 `chat/completions` 请求。
   - `provider_reachable=true` 表示 Provider 至少已成功响应；`model_available=true` 表示当前模型已通过实际调用校验。
   - `using_saved_api_key=true` 表示本次测试未提交新密钥，而是沿用了当前用户已经保存的 API Key。
+  - 当服务端环境变量 `AI_PROVIDER_DEBUG=true` 时，响应中会额外返回 `debug` 对象，包含本次上游请求 URL、脱敏后的请求头、请求体、响应状态码、响应头与响应体，便于排查兼容性问题。
 
 #### 返回样例
 
@@ -583,7 +584,21 @@
       "provider_reachable": true,
       "model_available": true,
       "using_saved_api_key": false,
-      "message": "Provider 已连通，当前模型可用"
+      "message": "Provider 已连通，当前模型可用",
+      "debug": {
+        "request_url": "https://api.renice.cc/v1/chat/completions",
+        "request_method": "POST",
+        "request_headers": {
+          "Authorization": "Bearer sk-d************7890",
+          "Content-Type": "application/json"
+        },
+        "request_body": "{\n  \"model\": \"gpt-4.1-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"你是一个 OpenAI Compatible Provider 连通性测试助手。\\n你只能返回大写字符串 OK，不要输出解释、标点或其它内容。\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Return OK only.\"\n    }\n  ],\n  \"temperature\": 0,\n  \"max_tokens\": 8\n}",
+        "response_status_code": 200,
+        "response_headers": {
+          "Content-Type": "application/json"
+        },
+        "response_body": "{\n  \"choices\": [\n    {\n      \"message\": {\n        \"content\": \"OK\"\n      }\n    }\n  ]\n}"
+      }
     }
   }
 }

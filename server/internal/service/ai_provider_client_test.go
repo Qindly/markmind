@@ -45,6 +45,52 @@ func TestAIProviderClientRequestCompletionSuccess(t *testing.T) {
 	}
 }
 
+func TestAIProviderClientRequestCompletionDetailedReturnsDebugInfo(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"choices":[{"message":{"content":"OK"}}]}`))
+	}))
+	defer server.Close()
+
+	baseURL, err := util.NormalizeAIProviderBaseURL(server.URL)
+	if err != nil {
+		t.Fatalf("归一化测试服务地址失败: %v", err)
+	}
+
+	client := newAIProviderClient(time.Second)
+	result, err := client.requestCompletionDetailed(
+		context.Background(),
+		&aiProviderCredentials{
+			baseURL: baseURL,
+			apiKey:  "sk-debug-test-key",
+			model:   "gpt-4.1-mini",
+		},
+		buildAISettingsTestMessages(),
+		0,
+		aiProbeMaxTokens,
+		true,
+	)
+	if err != nil {
+		t.Fatalf("调试探活请求应成功，实际报错: %v", err)
+	}
+
+	if result.debug == nil {
+		t.Fatal("启用调试模式时应返回调试信息")
+	}
+
+	if result.debug.RequestURL != baseURL+"/chat/completions" {
+		t.Fatalf("调试返回的请求地址不正确: %s", result.debug.RequestURL)
+	}
+
+	if result.debug.RequestHeaders["Authorization"] == "Bearer sk-debug-test-key" {
+		t.Fatal("调试信息中的 Authorization 不应回传明文 API Key")
+	}
+
+	if result.debug.ResponseStatusCode != http.StatusOK {
+		t.Fatalf("调试返回的状态码不正确: %d", result.debug.ResponseStatusCode)
+	}
+}
+
 func TestAIProviderClientRequestCompletionClassifiesModelUnavailable(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusBadRequest)

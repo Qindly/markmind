@@ -38,6 +38,7 @@ type Config struct {
 	JWTSecret               string
 	AIProviderEncryptSecret string
 	AIRequestTimeout        time.Duration
+	AIProviderDebug         bool
 	FrontendOrigin          string
 	TrustedProxies          []string
 	AccessTokenTTL          time.Duration
@@ -77,6 +78,11 @@ func Load() (Config, error) {
 	}
 
 	aiRequestTimeout, err := getEnvAsDuration("AI_REQUEST_TIMEOUT", defaultAIRequestTimeout)
+	if err != nil {
+		return Config{}, err
+	}
+
+	aiProviderDebug, err := getEnvAsBool("AI_PROVIDER_DEBUG", false)
 	if err != nil {
 		return Config{}, err
 	}
@@ -129,6 +135,7 @@ func Load() (Config, error) {
 		JWTSecret:               jwtSecret,
 		AIProviderEncryptSecret: aiProviderEncryptSecret,
 		AIRequestTimeout:        aiRequestTimeout,
+		AIProviderDebug:         aiProviderDebug,
 		FrontendOrigin:          frontendOrigin,
 		TrustedProxies:          trustedProxies,
 		AccessTokenTTL:          accessTokenTTL,

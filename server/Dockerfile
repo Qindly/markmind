@@ -12,7 +12,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /markmind-api ./cmd/api
 FROM debian:12-slim AS runner
 WORKDIR /app
 
-RUN useradd --create-home --shell /usr/sbin/nologin markmind
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /usr/sbin/nologin markmind
 COPY --from=builder /markmind-api /app/markmind-api
 COPY --from=builder /app/migrations /app/migrations
 

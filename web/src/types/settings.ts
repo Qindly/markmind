@@ -33,8 +33,20 @@ export interface AISettingsTestResult {
   model_available: boolean;
   using_saved_api_key: boolean;
   message: string;
+  debug?: AIProviderDebugInfo;
 }
 
 export interface TestAISettingsResponseData {
   result: AISettingsTestResult;
+}
+
+export interface AIProviderDebugInfo {
+  request_url: string;
+  request_method: string;
+  request_headers: Record<string, string>;
+  request_body: string;
+  response_status_code?: number;
+  response_headers?: Record<string, string>;
+  response_body?: string;
+  network_error?: string;
 }

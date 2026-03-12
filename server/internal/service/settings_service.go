@@ -26,21 +26,26 @@ type settingsService struct {
 	aiProviderSettingRepository repository.AIProviderSettingRepository
 	textEncryptor               *util.TextEncryptor
 	aiProviderClient            *aiProviderClient
+	aiProviderDebug             bool
 }
 
 // NewSettingsService - 创建设置页服务实现。
 // 参数 aiProviderSettingRepository: AI Provider 配置仓储。
 // 参数 textEncryptor: 敏感文本加密器。
+// 参数 requestTimeout: 向上游 Provider 发起探活请求的超时时间。
+// 参数 aiProviderDebug: 是否为设置页探活返回调试快照。
 // 返回值：设置页服务实例。
 func NewSettingsService(
 	aiProviderSettingRepository repository.AIProviderSettingRepository,
 	textEncryptor *util.TextEncryptor,
 	requestTimeout time.Duration,
+	aiProviderDebug bool,
 ) SettingsServicer {
 	return &settingsService{
 		aiProviderSettingRepository: aiProviderSettingRepository,
 		textEncryptor:               textEncryptor,
 		aiProviderClient:            newAIProviderClient(requestTimeout),
+		aiProviderDebug:             aiProviderDebug,
 	}
 }
 
@@ -173,7 +178,7 @@ func (service *settingsService) TestAISettings(
 		Message:           "Provider 已连通，当前模型可用",
 	}
 
-	_, err = service.aiProviderClient.requestCompletion(
+	completionResult, err := service.aiProviderClient.requestCompletionDetailed(
 		ctx,
 		&aiProviderCredentials{
 			baseURL: normalizedBaseURL,
@@ -183,6 +188,7 @@ func (service *settingsService) TestAISettings(
 		buildAISettingsTestMessages(),
 		0,
 		aiProbeMaxTokens,
+		service.aiProviderDebug,
 	)
 	if err != nil {
 		var completionErr *aiProviderCompletionError
@@ -190,6 +196,7 @@ func (service *settingsService) TestAISettings(
 			testResult.ProviderReachable = completionErr.providerReachable
 			testResult.ModelAvailable = completionErr.modelAvailable
 			testResult.Message = completionErr.message
+			testResult.Debug = completionErr.debug
 
 			return &dto.TestAISettingsResponse{
 				Result: testResult,
@@ -200,7 +207,15 @@ func (service *settingsService) TestAISettings(
 	}
 
 	return &dto.TestAISettingsResponse{
-		Result: testResult,
+		Result: dto.AISettingsTestResult{
+			BaseURL:           testResult.BaseURL,
+			Model:             testResult.Model,
+			ProviderReachable: testResult.ProviderReachable,
+			ModelAvailable:    testResult.ModelAvailable,
+			UsingSavedAPIKey:  testResult.UsingSavedAPIKey,
+			Message:           testResult.Message,
+			Debug:             completionResult.debug,
+		},
 	}, nil
 }
 

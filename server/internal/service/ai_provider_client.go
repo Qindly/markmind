@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Qindly/markmind/internal/dto"
 	"github.com/Qindly/markmind/internal/util"
 )
 
@@ -30,6 +31,11 @@ const (
 
 type aiProviderClient struct {
 	httpClient *http.Client
+}
+
+type aiProviderCompletionResult struct {
+	content string
+	debug   *dto.AIProviderDebugInfo
 }
 
 type aiProviderCredentials struct {
@@ -69,6 +75,7 @@ type aiProviderCompletionError struct {
 	providerReachable bool
 	modelAvailable    bool
 	message           string
+	debug             *dto.AIProviderDebugInfo
 }
 
 func (err *aiProviderCompletionError) Error() string {
@@ -100,6 +107,24 @@ func (client *aiProviderClient) requestCompletion(
 	temperature float64,
 	maxTokens int,
 ) (string, error) {
+	result, err := client.requestCompletionDetailed(ctx, credentials, messages, temperature, maxTokens, false)
+	if err != nil {
+		return "", err
+	}
+
+	return result.content, nil
+}
+
+// requestCompletionDetailed - 调用 OpenAI Compatible chat completions 接口，并在需要时返回调试信息。
+// 参数 includeDebug: 为 true 时返回脱敏后的请求与响应快照，便于设置页探活排查。
+func (client *aiProviderClient) requestCompletionDetailed(
+	ctx context.Context,
+	credentials *aiProviderCredentials,
+	messages []aiChatMessage,
+	temperature float64,
+	maxTokens int,
+	includeDebug bool,
+) (*aiProviderCompletionResult, error) {
 	requestBody, err := json.Marshal(aiChatCompletionRequest{
 		Model:       credentials.model,
 		Messages:    messages,
@@ -107,7 +132,7 @@ func (client *aiProviderClient) requestCompletion(
 		MaxTokens:   maxTokens,
 	})
 	if err != nil {
-		return "", fmt.Errorf("序列化 AI 请求失败: %w", err)
+		return nil, fmt.Errorf("序列化 AI 请求失败: %w", err)
 	}
 
 	httpRequest, err := http.NewRequestWithContext(
@@ -117,60 +142,68 @@ func (client *aiProviderClient) requestCompletion(
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
-		return "", fmt.Errorf("创建 AI 请求失败: %w", err)
+		return nil, fmt.Errorf("创建 AI 请求失败: %w", err)
 	}
 
 	httpRequest.Header.Set("Authorization", "Bearer "+credentials.apiKey)
 	httpRequest.Header.Set("Content-Type", "application/json")
 
+	debugInfo := buildAIProviderDebugRequest(httpRequest, requestBody, includeDebug)
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
-		return "", buildAIProviderNetworkError(err)
+		return nil, buildAIProviderNetworkError(err, debugInfo)
 	}
 	defer httpResponse.Body.Close()
 
 	responseBody, err := io.ReadAll(io.LimitReader(httpResponse.Body, aiResponseBodyLimit))
 	if err != nil {
-		return "", fmt.Errorf("读取 AI 响应失败: %w", err)
+		return nil, fmt.Errorf("读取 AI 响应失败: %w", err)
 	}
 
+	fillAIProviderDebugResponse(debugInfo, httpResponse, responseBody)
 	if httpResponse.StatusCode < http.StatusOK || httpResponse.StatusCode >= http.StatusMultipleChoices {
-		return "", buildAIProviderHTTPError(httpResponse.StatusCode, responseBody)
+		return nil, buildAIProviderHTTPError(httpResponse.StatusCode, responseBody, debugInfo)
 	}
 
 	var completionResponse aiChatCompletionResponse
 	if err := json.Unmarshal(responseBody, &completionResponse); err != nil {
-		return "", &aiProviderCompletionError{
+		return nil, &aiProviderCompletionError{
 			kind:              aiProviderCompletionErrorKindInvalidPayload,
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           "Provider 已响应，但返回格式不兼容 OpenAI Chat Completions",
+			debug:             debugInfo,
 		}
 	}
 
 	if len(completionResponse.Choices) == 0 {
-		return "", &aiProviderCompletionError{
+		return nil, &aiProviderCompletionError{
 			kind:              aiProviderCompletionErrorKindInvalidPayload,
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           "Provider 已响应，但返回结果中缺少可用内容",
+			debug:             debugInfo,
 		}
 	}
 
 	content := strings.TrimSpace(completionResponse.Choices[0].Message.Content)
 	if content == "" {
-		return "", &aiProviderCompletionError{
+		return nil, &aiProviderCompletionError{
 			kind:              aiProviderCompletionErrorKindInvalidPayload,
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           "Provider 已响应，但返回内容为空",
+			debug:             debugInfo,
 		}
 	}
 
-	return content, nil
+	return &aiProviderCompletionResult{
+		content: content,
+		debug:   debugInfo,
+	}, nil
 }
 
-func buildAIProviderNetworkError(err error) error {
+func buildAIProviderNetworkError(err error, debugInfo *dto.AIProviderDebugInfo) error {
 	message := "无法连接到 Provider，请检查 Base URL、网络或代理设置"
 
 	if errors.Is(err, context.DeadlineExceeded) {
@@ -182,15 +215,20 @@ func buildAIProviderNetworkError(err error) error {
 		message = "连接 Provider 超时，请检查网络状况或稍后重试"
 	}
 
+	if debugInfo != nil {
+		debugInfo.NetworkError = err.Error()
+	}
+
 	return &aiProviderCompletionError{
 		kind:              aiProviderCompletionErrorKindRequestFailed,
 		providerReachable: false,
 		modelAvailable:    false,
 		message:           message,
+		debug:             debugInfo,
 	}
 }
 
-func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
+func buildAIProviderHTTPError(statusCode int, responseBody []byte, debugInfo *dto.AIProviderDebugInfo) error {
 	upstreamMessage := extractAIProviderErrorMessage(responseBody)
 	switch {
 	case isModelAvailabilityError(statusCode, upstreamMessage):
@@ -199,6 +237,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已连通，但当前模型不可用：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	case statusCode == http.StatusUnauthorized:
 		return &aiProviderCompletionError{
@@ -206,6 +245,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已连通，但 API Key 无效或已失效：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	case statusCode == http.StatusForbidden:
 		return &aiProviderCompletionError{
@@ -213,6 +253,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已连通，但当前凭证没有调用权限：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	case statusCode == http.StatusNotFound:
 		return &aiProviderCompletionError{
@@ -220,6 +261,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已响应，但 Chat Completions 接口不存在或地址不兼容：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	case statusCode == http.StatusTooManyRequests:
 		return &aiProviderCompletionError{
@@ -227,6 +269,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已连通，但请求被限流：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	case statusCode >= http.StatusInternalServerError:
 		return &aiProviderCompletionError{
@@ -234,6 +277,7 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 已连通，但上游服务暂时不可用：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	default:
 		return &aiProviderCompletionError{
@@ -241,8 +285,82 @@ func buildAIProviderHTTPError(statusCode int, responseBody []byte) error {
 			providerReachable: true,
 			modelAvailable:    false,
 			message:           fmt.Sprintf("Provider 测试失败：%s", upstreamMessage),
+			debug:             debugInfo,
 		}
 	}
+}
+
+func buildAIProviderDebugRequest(
+	httpRequest *http.Request,
+	requestBody []byte,
+	includeDebug bool,
+) *dto.AIProviderDebugInfo {
+	if !includeDebug {
+		return nil
+	}
+
+	return &dto.AIProviderDebugInfo{
+		RequestURL:     httpRequest.URL.String(),
+		RequestMethod:  httpRequest.Method,
+		RequestHeaders: flattenHTTPHeaders(httpRequest.Header, true),
+		RequestBody:    formatJSONPayload(requestBody),
+	}
+}
+
+func fillAIProviderDebugResponse(
+	debugInfo *dto.AIProviderDebugInfo,
+	httpResponse *http.Response,
+	responseBody []byte,
+) {
+	if debugInfo == nil {
+		return
+	}
+
+	debugInfo.ResponseStatusCode = httpResponse.StatusCode
+	debugInfo.ResponseHeaders = flattenHTTPHeaders(httpResponse.Header, false)
+	debugInfo.ResponseBody = formatJSONPayload(responseBody)
+}
+
+func flattenHTTPHeaders(headers http.Header, maskAuthorization bool) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+
+	result := make(map[string]string, len(headers))
+	for key, values := range headers {
+		value := strings.Join(values, ", ")
+		if maskAuthorization && strings.EqualFold(key, "Authorization") {
+			value = maskAuthorizationHeader(value)
+		}
+
+		result[key] = value
+	}
+
+	return result
+}
+
+func maskAuthorizationHeader(value string) string {
+	const bearerPrefix = "Bearer "
+	trimmedValue := strings.TrimSpace(value)
+	if strings.HasPrefix(trimmedValue, bearerPrefix) {
+		return bearerPrefix + util.MaskSecretValue(strings.TrimPrefix(trimmedValue, bearerPrefix))
+	}
+
+	return util.MaskSecretValue(trimmedValue)
+}
+
+func formatJSONPayload(payload []byte) string {
+	trimmedPayload := bytes.TrimSpace(payload)
+	if len(trimmedPayload) == 0 {
+		return ""
+	}
+
+	var formatted bytes.Buffer
+	if err := json.Indent(&formatted, trimmedPayload, "", "  "); err == nil {
+		return formatted.String()
+	}
+
+	return string(trimmedPayload)
 }
 
 func extractAIProviderErrorMessage(responseBody []byte) string {

@@ -6,6 +6,7 @@ import { FormField } from '../../../components/ui/FormField';
 import { Input } from '../../../components/ui/Input';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { AISettingsTestResult } from '../../../types/settings';
+import { AISettingsDebugPanel } from './AISettingsDebugPanel';
 
 export interface AISettingsCardProps {
   baseURL: string;
@@ -73,6 +74,8 @@ export function AISettingsCard({
             </AlertDescription>
           </Alert>
         ) : null}
+
+        {testResult?.debug ? <AISettingsDebugPanel debugInfo={testResult.debug} /> : null}
 
         <FormField htmlFor="ai-base-url" label="Base URL" message="请填写 Provider 的兼容接口根地址，例如 https://api.openai.com。">
           <Input

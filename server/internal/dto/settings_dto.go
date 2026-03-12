@@ -35,15 +35,28 @@ type TestAISettingsRequest struct {
 
 // AISettingsTestResult - 设置页 AI Provider 测试结果。
 type AISettingsTestResult struct {
-	BaseURL           string `json:"base_url"`
-	Model             string `json:"model"`
-	ProviderReachable bool   `json:"provider_reachable"`
-	ModelAvailable    bool   `json:"model_available"`
-	UsingSavedAPIKey  bool   `json:"using_saved_api_key"`
-	Message           string `json:"message"`
+	BaseURL           string               `json:"base_url"`
+	Model             string               `json:"model"`
+	ProviderReachable bool                 `json:"provider_reachable"`
+	ModelAvailable    bool                 `json:"model_available"`
+	UsingSavedAPIKey  bool                 `json:"using_saved_api_key"`
+	Message           string               `json:"message"`
+	Debug             *AIProviderDebugInfo `json:"debug,omitempty"`
 }
 
 // TestAISettingsResponse - 测试 AI 设置返回数据。
 type TestAISettingsResponse struct {
 	Result AISettingsTestResult `json:"result"`
+}
+
+// AIProviderDebugInfo - 返回给前端的 Provider 调试信息。
+type AIProviderDebugInfo struct {
+	RequestURL         string            `json:"request_url"`
+	RequestMethod      string            `json:"request_method"`
+	RequestHeaders     map[string]string `json:"request_headers"`
+	RequestBody        string            `json:"request_body"`
+	ResponseStatusCode int               `json:"response_status_code,omitempty"`
+	ResponseHeaders    map[string]string `json:"response_headers,omitempty"`
+	ResponseBody       string            `json:"response_body,omitempty"`
+	NetworkError       string            `json:"network_error,omitempty"`
 }
