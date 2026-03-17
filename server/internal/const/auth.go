@@ -25,6 +25,8 @@ const (
 	ErrCodeDocumentNotFound = 40008
 	// ErrCodeFolderNotEmpty - 文件夹下仍有文档，无法删除。
 	ErrCodeFolderNotEmpty = 40009
+	// ErrCodeDocumentRevisionNotFound - 文档历史版本不存在。
+	ErrCodeDocumentRevisionNotFound = 40010
 
 	// ErrCodeUnauthorized - 未登录或身份无效。
 	ErrCodeUnauthorized = 40101
@@ -58,6 +60,8 @@ var (
 	ErrDocumentNotFound = errors.New("文档不存在")
 	// ErrFolderNotEmpty - 文件夹下仍有文档，无法删除。
 	ErrFolderNotEmpty = errors.New("文件夹下仍有文档，无法删除")
+	// ErrDocumentRevisionNotFound - 文档历史版本不存在或不可访问。
+	ErrDocumentRevisionNotFound = errors.New("文档历史版本不存在")
 	// ErrInvalidCredentials - 登录凭证无效。
 	ErrInvalidCredentials = errors.New("账号或密码错误")
 	// ErrUnauthorized - 当前请求未通过身份校验。

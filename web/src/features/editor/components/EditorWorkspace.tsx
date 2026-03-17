@@ -8,13 +8,16 @@ import { Card, CardContent, CardHeader } from '../../../components/ui/Card';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import type { DocumentDetail, DocumentSavePhase } from '../../../types/document';
 import { formatEditorDateTime } from '../formatEditorDateTime';
+import type { UseDocumentRevisionHistoryResult } from '../useDocumentRevisionHistory';
 import type { UseEditorSelectionAIResult } from '../useEditorSelectionAI';
 import { useMarkdownPreview } from '../useMarkdownPreview';
 import { useEditorToc } from '../useEditorToc';
+import { useProgressivePreviewChunks } from '../useProgressivePreviewChunks';
 import { CodeMirrorEditor } from './CodeMirrorEditor';
 import { EditorInfoPanel } from './EditorInfoPanel';
 import { EditorTocPanel } from './EditorTocPanel';
 import { EditorMagicEditDialog } from './EditorMagicEditDialog';
+import { EditorRevisionHistoryDialog } from './EditorRevisionHistoryDialog';
 import { EditorSelectionActions } from './EditorSelectionActions';
 import { EditorTranslateDialog } from './EditorTranslateDialog';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -22,6 +25,7 @@ export interface EditorWorkspaceProps {
   document: DocumentDetail;
   content: string;
   errorMessage: string;
+  canManualSave: boolean;
   statusMessage: string;
   savePhase: DocumentSavePhase;
   isDirty: boolean;
@@ -31,6 +35,7 @@ export interface EditorWorkspaceProps {
   onContentChange: (value: string) => void;
   onImagePaste: (imageFiles: File[], view: EditorView) => Promise<void>;
   onSave: () => Promise<void>;
+  revisionHistory: UseDocumentRevisionHistoryResult;
   selectionAI: UseEditorSelectionAIResult;
 }
 /** EditorWorkspace - 展示编辑页标题、左侧概览栏、CodeMirror 编辑器与实时预览。 */
@@ -38,6 +43,7 @@ export function EditorWorkspace({
   document,
   content,
   errorMessage,
+  canManualSave,
   statusMessage,
   savePhase,
   isDirty,
@@ -47,13 +53,15 @@ export function EditorWorkspace({
   onContentChange,
   onImagePaste,
   onSave,
+  revisionHistory,
   selectionAI,
 }: EditorWorkspaceProps) {
   const markdownPreview = useMarkdownPreview(content);
+  const progressivePreview = useProgressivePreviewChunks(markdownPreview.chunks);
   const editorToc = useEditorToc({
-    html: markdownPreview.html,
     headings: markdownPreview.headings,
-    hasContent: markdownPreview.hasContent,
+    renderedChunkSignature: progressivePreview.renderedChunkSignature,
+    ensureHeadingChunkRendered: progressivePreview.ensureHeadingChunkRendered,
   });
   const isUploadingImages = uploadingImageCount > 0;
   return (
@@ -85,9 +93,12 @@ export function EditorWorkspace({
                   <Button asChild className="w-auto" size="sm" type="button" variant="secondary">
                     <Link to={`/settings?from=editor&document_id=${document.id}`}>AI 设置</Link>
                   </Button>
+                  <Button className="w-auto" onClick={revisionHistory.handleOpen} size="sm" type="button" variant="secondary">
+                    历史版本
+                  </Button>
                   <Button
                     className="w-auto"
-                    disabled={!isDirty}
+                    disabled={!canManualSave}
                     isLoading={isSaving}
                     onClick={() => void onSave()}
                     size="sm"
@@ -150,11 +161,13 @@ export function EditorWorkspace({
                   </p>
                 </div>
                 <MarkdownPreview
+                  chunks={progressivePreview.renderedChunks}
                   errorMessage={markdownPreview.errorMessage}
-                  hasContent={editorToc.hasPreviewContent}
-                  html={editorToc.previewHtml}
+                  hasContent={markdownPreview.hasContent}
+                  isProgressiveRendering={progressivePreview.isProgressiveRendering}
                   isRendering={markdownPreview.isRendering}
                   previewContainerRef={editorToc.previewContainerRef}
+                  specialBlocks={markdownPreview.specialBlocks}
                 />
               </section>
             </div>
@@ -185,6 +198,25 @@ export function EditorWorkspace({
         result={selectionAI.magicResult}
         selectedText={selectionAI.selectedText}
         status={selectionAI.magicStatus}
+      />
+
+      <EditorRevisionHistoryDialog
+        canRollback={revisionHistory.canRollback}
+        currentRevision={revisionHistory.currentRevision}
+        diff={revisionHistory.diff}
+        errorMessage={revisionHistory.errorMessage}
+        hasUnversionedContent={revisionHistory.hasUnversionedContent}
+        isDirty={isDirty}
+        isLoadingDiff={revisionHistory.isLoadingDiff}
+        isLoadingRevisions={revisionHistory.isLoadingRevisions}
+        isRollingBack={revisionHistory.isRollingBack}
+        isSaving={isSaving}
+        onOpenChange={revisionHistory.handleOpenChange}
+        onRollback={revisionHistory.handleRollback}
+        onSelectRevision={revisionHistory.handleSelectRevision}
+        open={revisionHistory.isOpen}
+        revisions={revisionHistory.revisions}
+        selectedRevision={revisionHistory.selectedRevision}
       />
 
       <EditorTranslateDialog

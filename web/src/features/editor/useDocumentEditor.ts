@@ -1,10 +1,11 @@
-﻿// useDocumentEditor.ts - 封装编辑页的文档加载、刷新与编辑态组合逻辑
+// useDocumentEditor.ts - 封装编辑页的文档加载、保存、历史版本与编辑态组合逻辑
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { fetchDocumentDetail } from '../../api/document';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import type { DocumentDetail, DocumentSavePhase } from '../../types/document';
+import { useDocumentRevisionHistory, type UseDocumentRevisionHistoryResult } from './useDocumentRevisionHistory';
 import { useDocumentSaveController } from './useDocumentSaveController';
 
 export interface UseDocumentEditorResult {
@@ -17,6 +18,8 @@ export interface UseDocumentEditorResult {
   isLeaveDialogOpen: boolean;
   isLoading: boolean;
   isSaving: boolean;
+  canManualSave: boolean;
+  revisionHistory: UseDocumentRevisionHistoryResult;
   handleBack: () => void;
   handleCancelLeave: () => void;
   handleConfirmLeave: () => void;
@@ -26,7 +29,7 @@ export interface UseDocumentEditorResult {
 }
 
 /**
- * useDocumentEditor - 管理编辑页的文档加载、刷新与正文编辑组合状态。
+ * useDocumentEditor - 管理编辑页的文档加载、保存、历史版本与正文编辑组合状态。
  * 返回值：编辑页渲染所需的状态与交互回调。
  */
 export function useDocumentEditor(): UseDocumentEditorResult {
@@ -48,6 +51,16 @@ export function useDocumentEditor(): UseDocumentEditorResult {
     documentID,
     document,
     content,
+    setContent,
+    setDocument,
+    setErrorMessage,
+  });
+
+  const revisionHistory = useDocumentRevisionHistory({
+    documentID,
+    document,
+    isDirty: saveController.isDirty,
+    isSaving: saveController.isSaving,
     setContent,
     setDocument,
     setErrorMessage,
@@ -134,6 +147,8 @@ export function useDocumentEditor(): UseDocumentEditorResult {
     isLeaveDialogOpen,
     isLoading,
     isSaving: saveController.isSaving,
+    canManualSave: saveController.canManualSave,
+    revisionHistory,
     handleBack,
     handleCancelLeave,
     handleConfirmLeave,

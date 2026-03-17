@@ -62,6 +62,8 @@ func mapBusinessError(err error) (int, int, string) {
 		return http.StatusNotFound, appconst.ErrCodeDocumentNotFound, err.Error()
 	case errors.Is(err, appconst.ErrFolderNotEmpty):
 		return http.StatusBadRequest, appconst.ErrCodeFolderNotEmpty, err.Error()
+	case errors.Is(err, appconst.ErrDocumentRevisionNotFound):
+		return http.StatusNotFound, appconst.ErrCodeDocumentRevisionNotFound, err.Error()
 	case errors.Is(err, appconst.ErrImageRequired):
 		return http.StatusBadRequest, appconst.ErrCodeImageRequired, err.Error()
 	case errors.Is(err, appconst.ErrImageTooLarge):

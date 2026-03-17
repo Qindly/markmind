@@ -117,6 +117,22 @@ textarea {
   font-size: 0.95rem;
 }
 
+.markdown-preview-chunk {
+  contain: layout paint style;
+}
+
+.markdown-preview-chunk + .markdown-preview-chunk {
+  margin-top: 0.35rem;
+}
+
+.markdown-preview > .markdown-preview-chunk > :first-child {
+  margin-top: 0;
+}
+
+.markdown-preview > .markdown-preview-chunk > :last-child {
+  margin-bottom: 0;
+}
+
 .markdown-preview > :first-child {
   margin-top: 0;
 }

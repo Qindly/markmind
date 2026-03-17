@@ -1,25 +1,29 @@
-﻿// useMarkdownPreview.ts - 按需加载 Markdown 预览渲染链并返回异步预览结果
-import { useEffect, useRef, useState } from 'react';
+// useMarkdownPreview.ts - debounce expensive preview rendering and keep async state in sync
+import { startTransition, useEffect, useRef, useState } from 'react';
 
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { MarkdownPreviewResult } from '../../lib/markdownPreview';
 
 type MarkdownPreviewModule = typeof import('../../lib/markdownPreview');
 
+const PREVIEW_RENDER_DEBOUNCE_MS = 180;
 let markdownPreviewModulePromise: Promise<MarkdownPreviewModule> | null = null;
 
 export interface UseMarkdownPreviewResult extends MarkdownPreviewResult {
   hasContent: boolean;
   isRendering: boolean;
+  isDebouncing: boolean;
   errorMessage: string;
 }
 
 const EMPTY_PREVIEW_RESULT: MarkdownPreviewResult = {
   html: '',
   headings: [],
+  specialBlocks: [],
+  chunks: [],
+  isChunked: false,
 };
 
-// getMarkdownPreviewModule - 懒加载 Markdown 预览渲染模块。
-// 返回值：包含 renderMarkdownPreview 的运行时模块对象。
 async function getMarkdownPreviewModule(): Promise<MarkdownPreviewModule> {
   if (!markdownPreviewModulePromise) {
     markdownPreviewModulePromise = import('../../lib/markdownPreview');
@@ -28,29 +32,24 @@ async function getMarkdownPreviewModule(): Promise<MarkdownPreviewModule> {
   return markdownPreviewModulePromise;
 }
 
-// getMarkdownPreviewErrorMessage - 整理预览渲染失败时的展示文案。
-// 参数 error: 渲染阶段抛出的异常对象。
-// 返回值：适合直接展示在预览区中的错误提示。
 function getMarkdownPreviewErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
-    return `预览生成失败：${error.message.trim()}`;
+    return `\u9884\u89c8\u751f\u6210\u5931\u8d25\uff1a${error.message.trim()}`;
   }
 
-  return '预览生成失败，请检查当前 Markdown 内容是否存在异常。';
+  return '\u9884\u89c8\u751f\u6210\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u5f53\u524d Markdown \u5185\u5bb9\u662f\u5426\u5b58\u5728\u5f02\u5e38\u3002';
 }
 
-/**
- * useMarkdownPreview - 按需生成 Markdown 预览结果与标题数据。
- * 参数 content: 当前编辑器中的 Markdown 正文。
- * 返回值：预览 HTML、标题列表、加载状态与错误信息。
- */
 export function useMarkdownPreview(content: string): UseMarkdownPreviewResult {
   const hasContent = Boolean(content.trim());
+  const debouncedContent = useDebouncedValue(content, PREVIEW_RENDER_DEBOUNCE_MS);
+  const isDebouncing = hasContent && content !== debouncedContent;
   const requestIDRef = useRef(0);
   const [previewState, setPreviewState] = useState<UseMarkdownPreviewResult>({
     ...EMPTY_PREVIEW_RESULT,
     hasContent: false,
     isRendering: false,
+    isDebouncing: false,
     errorMessage: '',
   });
 
@@ -60,6 +59,7 @@ export function useMarkdownPreview(content: string): UseMarkdownPreviewResult {
         ...EMPTY_PREVIEW_RESULT,
         hasContent: false,
         isRendering: false,
+        isDebouncing: false,
         errorMessage: '',
       });
       return;
@@ -69,37 +69,46 @@ export function useMarkdownPreview(content: string): UseMarkdownPreviewResult {
     requestIDRef.current += 1;
     const currentRequestID = requestIDRef.current;
 
-    setPreviewState((currentState) => ({
-      ...currentState,
-      hasContent: true,
-      isRendering: true,
-      errorMessage: '',
-    }));
+    startTransition(() => {
+      setPreviewState((currentState) => ({
+        ...currentState,
+        hasContent: true,
+        isRendering: true,
+        isDebouncing: false,
+        errorMessage: '',
+      }));
+    });
 
     void (async () => {
       try {
         const markdownPreviewModule = await getMarkdownPreviewModule();
-        const nextPreview = markdownPreviewModule.renderMarkdownPreview(content);
+        const nextPreview = markdownPreviewModule.renderMarkdownPreview(debouncedContent);
         if (isDisposed || requestIDRef.current !== currentRequestID) {
           return;
         }
 
-        setPreviewState({
-          ...nextPreview,
-          hasContent: true,
-          isRendering: false,
-          errorMessage: '',
+        startTransition(() => {
+          setPreviewState({
+            ...nextPreview,
+            hasContent: true,
+            isRendering: false,
+            isDebouncing: false,
+            errorMessage: '',
+          });
         });
       } catch (error) {
         if (isDisposed || requestIDRef.current !== currentRequestID) {
           return;
         }
 
-        setPreviewState({
-          ...EMPTY_PREVIEW_RESULT,
-          hasContent: true,
-          isRendering: false,
-          errorMessage: getMarkdownPreviewErrorMessage(error),
+        startTransition(() => {
+          setPreviewState({
+            ...EMPTY_PREVIEW_RESULT,
+            hasContent: true,
+            isRendering: false,
+            isDebouncing: false,
+            errorMessage: getMarkdownPreviewErrorMessage(error),
+          });
         });
       }
     })();
@@ -107,7 +116,13 @@ export function useMarkdownPreview(content: string): UseMarkdownPreviewResult {
     return () => {
       isDisposed = true;
     };
-  }, [content, hasContent]);
+  }, [debouncedContent, hasContent]);
 
-  return previewState;
+  return {
+    ...previewState,
+    hasContent,
+    isRendering: previewState.isRendering || isDebouncing,
+    isDebouncing,
+    errorMessage: isDebouncing ? '' : previewState.errorMessage,
+  };
 }

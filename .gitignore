@@ -31,3 +31,7 @@ data/
 Thumbs.db
 
 tmp/
+.cache/
+
+
+RESUME.md
