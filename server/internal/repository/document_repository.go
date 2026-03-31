@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	appconst "github.com/Qindly/markmind/internal/const"
@@ -17,8 +18,19 @@ import (
 
 const defaultDocumentRevisionQueryLimit = 50
 
+// DocumentSummary - 不含 content 的文档摘要，用于列表场景。
+type DocumentSummary struct {
+	ID        int64
+	UserID    int64
+	FolderID  *int64
+	Title     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // DocumentRepository - 文档数据访问接口。
 type DocumentRepository interface {
+	ListDocumentSummariesByUserID(ctx context.Context, userID int64) ([]DocumentSummary, error)
 	ListDocumentsByUserID(ctx context.Context, userID int64) ([]model.Document, error)
 	SearchDocumentsByKeyword(ctx context.Context, userID int64, folderID *int64, keyword string, searchAll bool) ([]model.Document, error)
 	CreateDocument(ctx context.Context, document model.Document) (*model.Document, error)
@@ -42,6 +54,41 @@ type documentRepository struct {
 // 返回值：文档仓储实例。
 func NewDocumentRepository(pool *pgxpool.Pool) DocumentRepository {
 	return &documentRepository{pool: pool}
+}
+
+func (repository *documentRepository) ListDocumentSummariesByUserID(ctx context.Context, userID int64) ([]DocumentSummary, error) {
+	query := `
+		SELECT id, user_id, folder_id, title, created_at, updated_at
+		FROM documents
+		WHERE user_id = $1
+		ORDER BY updated_at DESC, id DESC
+	`
+
+	rows, err := repository.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("查询文档列表失败: %w", err)
+	}
+	defer rows.Close()
+
+	summaries := make([]DocumentSummary, 0)
+	for rows.Next() {
+		var folderID sql.NullInt64
+		var s DocumentSummary
+		if err := rows.Scan(&s.ID, &s.UserID, &folderID, &s.Title, &s.CreatedAt, &s.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("扫描文档摘要数据失败: %w", err)
+		}
+		if folderID.Valid {
+			v := folderID.Int64
+			s.FolderID = &v
+		}
+		summaries = append(summaries, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("遍历文档列表失败: %w", err)
+	}
+
+	return summaries, nil
 }
 
 func (repository *documentRepository) ListDocumentsByUserID(ctx context.Context, userID int64) ([]model.Document, error) {
