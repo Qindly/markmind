@@ -61,6 +61,7 @@ export function useDocumentSaveController({
       setSavePhase('saved');
     }
   }, [content, document]);
+
   const clearAutoSaveTimer = useCallback(() => {
     if (autoSaveTimerRef.current === null) {
       return;
@@ -68,6 +69,7 @@ export function useDocumentSaveController({
     window.clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = null;
   }, []);
+
   const persistContent = useCallback(
     async (mode: SaveMode) => {
       const currentDocument = latestDocumentRef.current;
@@ -124,6 +126,7 @@ export function useDocumentSaveController({
     },
     [clearAutoSaveTimer, documentID, setDocument, setErrorMessage],
   );
+
   useEffect(() => {
     if (documentID === null || document === null || isSavingRef.current || !isDirty) {
       return;
@@ -136,6 +139,7 @@ export function useDocumentSaveController({
     return clearAutoSaveTimer;
   }, [clearAutoSaveTimer, document, documentID, isDirty, persistContent]);
   useEffect(() => clearAutoSaveTimer, [clearAutoSaveTimer]);
+  
   function handleContentChange(value: string) {
     setContent(value);
     setErrorMessage('');

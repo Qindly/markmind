@@ -1,6 +1,5 @@
-﻿// useEditorSelectionAI.ts - 管理编辑器选区 AI 浮层、弹窗、流式结果与写回流程
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import type { EditorView } from '@codemirror/view';
+// useEditorSelectionAI.ts - 管理编辑器选区 AI 浮层、弹窗、流式结果与写回流程
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { streamMagicEdit, streamTranslation } from '../../api/ai';
@@ -9,15 +8,12 @@ import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
 import type { AIRequestStatus } from '../../types/ai';
 import type { DocumentDetail } from '../../types/document';
-import { applyAITextToEditor, buildEditorSelectionSnapshot, type AIApplyMode, type EditorSelectionSnapshot } from './selectionAI';
-
-interface SelectionActionState {
-  top: number;
-  left: number;
-}
+import { applyAITextToEditor, type AIApplyMode } from './selectionAI';
+import { copyAIResult, useAIStreamRequest } from './useAIStreamRequest';
+import { useSelectionToolbar } from './useSelectionToolbar';
 
 export interface UseEditorSelectionAIResult {
-  selectionActionState: SelectionActionState | null;
+  selectionActionState: { top: number; left: number } | null;
   isMagicEditDialogOpen: boolean;
   isTranslateDialogOpen: boolean;
   magicInstruction: string;
@@ -30,8 +26,8 @@ export interface UseEditorSelectionAIResult {
   translateErrorMessage: string;
   translateStatus: AIRequestStatus;
   selectedText: string;
-  handleEditorReady: (view: EditorView) => void;
-  handleSelectionChange: (view: EditorView) => void;
+  handleEditorReady: (view: import('@codemirror/view').EditorView) => void;
+  handleSelectionChange: (view: import('@codemirror/view').EditorView) => void;
   handleOpenMagicEdit: () => Promise<void>;
   handleOpenTranslate: () => Promise<void>;
   handleMagicInstructionChange: (value: string) => void;
@@ -54,114 +50,42 @@ export interface UseEditorSelectionAIResult {
 const DEFAULT_TRANSLATE_SOURCE_LANGUAGE = 'auto';
 const DEFAULT_TRANSLATE_TARGET_LANGUAGE = '中文';
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError';
-}
+const MAGIC_EDIT_STREAM_OPTIONS = {
+  extractResult: (r: { result: string }) => r.result,
+  fallbackErrorMessage: '魔法笔处理失败，请稍后重试',
+} as const;
 
-function disposeActiveRequest(controllerRef: MutableRefObject<AbortController | null>): void {
-  const activeController = controllerRef.current;
-  if (!activeController) {
-    return;
-  }
+const TRANSLATE_STREAM_OPTIONS = {
+  extractResult: (r: { translated_text: string }) => r.translated_text,
+  fallbackErrorMessage: '翻译处理失败，请稍后重试',
+} as const;
 
-  controllerRef.current = null;
-  activeController.abort();
-}
-
-/**
- * useEditorSelectionAI - 管理编辑器选区 AI 浮层、弹窗与结果回填流程。
- * 参数 document: 当前打开的文档详情。
- * 返回值：编辑器 AI 交互所需的状态与回调。
- */
 export function useEditorSelectionAI(document: DocumentDetail | null): UseEditorSelectionAIResult {
   const navigate = useNavigate();
-  const editorViewRef = useRef<EditorView | null>(null);
-  const magicEditAbortControllerRef = useRef<AbortController | null>(null);
-  const translateAbortControllerRef = useRef<AbortController | null>(null);
-  const [selectionSnapshot, setSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
-  const [dialogSelectionSnapshot, setDialogSelectionSnapshot] = useState<EditorSelectionSnapshot | null>(null);
+
+  // --- 弹窗开关 ---
   const [isMagicEditDialogOpen, setIsMagicEditDialogOpen] = useState(false);
   const [isTranslateDialogOpen, setIsTranslateDialogOpen] = useState(false);
+
+  // --- 选区浮层 ---
+  const toolbar = useSelectionToolbar(isMagicEditDialogOpen || isTranslateDialogOpen);
+
+  // --- 流式请求 ---
+  const magicEdit = useAIStreamRequest(streamMagicEdit, MAGIC_EDIT_STREAM_OPTIONS);
+  const translate = useAIStreamRequest(streamTranslation, TRANSLATE_STREAM_OPTIONS);
+
+  // --- 表单状态 ---
   const [magicInstruction, setMagicInstruction] = useState('');
-  const [magicResult, setMagicResult] = useState('');
-  const [magicErrorMessage, setMagicErrorMessage] = useState('');
-  const [magicStatus, setMagicStatus] = useState<AIRequestStatus>('idle');
   const [translateSourceLanguage, setTranslateSourceLanguage] = useState(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
   const [translateTargetLanguage, setTranslateTargetLanguage] = useState(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
-  const [translateResult, setTranslateResult] = useState('');
-  const [translateErrorMessage, setTranslateErrorMessage] = useState('');
-  const [translateStatus, setTranslateStatus] = useState<AIRequestStatus>('idle');
+
+  // --- AI 配置检查 ---
   const [isAIConfigured, setIsAIConfigured] = useState<boolean | null>(null);
 
-  const updateSelectionSnapshot = useCallback(
-    (view: EditorView) => {
-      if (isMagicEditDialogOpen || isTranslateDialogOpen) {
-        setSelectionSnapshot(null);
-        return;
-      }
+  const ensureAIConfigured = useCallback(async () => {
+    if (!document) return false;
 
-      setSelectionSnapshot(buildEditorSelectionSnapshot(view));
-    },
-    [isMagicEditDialogOpen, isTranslateDialogOpen],
-  );
-
-  useEffect(() => {
-    const currentView = editorViewRef.current;
-    if (!currentView) {
-      return;
-    }
-
-    const view = currentView;
-
-    function handleViewportChange() {
-      updateSelectionSnapshot(view);
-    }
-
-    window.addEventListener('resize', handleViewportChange);
-    window.addEventListener('scroll', handleViewportChange, true);
-    view.scrollDOM.addEventListener('scroll', handleViewportChange);
-
-    return () => {
-      window.removeEventListener('resize', handleViewportChange);
-      window.removeEventListener('scroll', handleViewportChange, true);
-      view.scrollDOM.removeEventListener('scroll', handleViewportChange);
-    };
-  }, [isMagicEditDialogOpen, isTranslateDialogOpen, updateSelectionSnapshot]);
-
-  useEffect(() => {
-    return () => {
-      disposeActiveRequest(magicEditAbortControllerRef);
-      disposeActiveRequest(translateAbortControllerRef);
-    };
-  }, []);
-
-  function resetMagicEditState() {
-    setMagicInstruction('');
-    setMagicResult('');
-    setMagicErrorMessage('');
-    setMagicStatus('idle');
-  }
-
-  function resetTranslateState() {
-    setTranslateSourceLanguage(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
-    setTranslateTargetLanguage(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
-    setTranslateResult('');
-    setTranslateErrorMessage('');
-    setTranslateStatus('idle');
-  }
-
-  function clearDialogSelection() {
-    setDialogSelectionSnapshot(null);
-  }
-
-  async function ensureAIConfigured() {
-    if (!document) {
-      return false;
-    }
-
-    if (isAIConfigured === true) {
-      return true;
-    }
+    if (isAIConfigured === true) return true;
 
     if (isAIConfigured === false) {
       toast({ description: '请先在设置页完成 AI Provider 配置', variant: 'destructive' });
@@ -186,245 +110,148 @@ export function useEditorSelectionAI(document: DocumentDetail | null): UseEditor
       toast({ description: getErrorMessage(error, '读取 AI 设置失败，请稍后重试'), variant: 'destructive' });
       return false;
     }
-  }
+  }, [document, isAIConfigured, navigate]);
 
-  function closeMagicEditDialog() {
-    disposeActiveRequest(magicEditAbortControllerRef);
+  // --- 结果写回 ---
+  const applyResult = useCallback(
+    (text: string, mode: AIApplyMode, onClose: () => void) => {
+      const view = toolbar.editorViewRef.current;
+      if (!view || !toolbar.dialogSnapshot) return;
+
+      applyAITextToEditor(view, toolbar.dialogSnapshot, text, mode);
+      toast({ description: 'AI 结果已写入文档' });
+      onClose();
+    },
+    [toolbar.editorViewRef, toolbar.dialogSnapshot],
+  );
+
+  // --- 关闭弹窗 ---
+  const closeMagicEditDialog = useCallback(() => {
+    magicEdit.reset();
+    setMagicInstruction('');
     setIsMagicEditDialogOpen(false);
-    clearDialogSelection();
-    resetMagicEditState();
-  }
+    toolbar.clearDialogSnapshot();
+  }, [magicEdit, toolbar]);
 
-  function closeTranslateDialog() {
-    disposeActiveRequest(translateAbortControllerRef);
+  const closeTranslateDialog = useCallback(() => {
+    translate.reset();
+    setTranslateSourceLanguage(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
+    setTranslateTargetLanguage(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
     setIsTranslateDialogOpen(false);
-    clearDialogSelection();
-    resetTranslateState();
-  }
+    toolbar.clearDialogSnapshot();
+  }, [translate, toolbar]);
 
-  async function handleOpenMagicEdit() {
-    if (!selectionSnapshot || !(await ensureAIConfigured())) {
-      return;
-    }
+  // --- 打开弹窗 ---
+  const handleOpenMagicEdit = useCallback(async () => {
+    if (!toolbar.selectionSnapshot || !(await ensureAIConfigured())) return;
 
-    disposeActiveRequest(magicEditAbortControllerRef);
-    resetMagicEditState();
-    setDialogSelectionSnapshot(selectionSnapshot);
-    setSelectionSnapshot(null);
+    magicEdit.reset();
+    setMagicInstruction('');
+    toolbar.freezeSelection();
     setIsMagicEditDialogOpen(true);
-  }
+  }, [toolbar, ensureAIConfigured, magicEdit]);
 
-  async function handleOpenTranslate() {
-    if (!selectionSnapshot || !(await ensureAIConfigured())) {
-      return;
-    }
+  const handleOpenTranslate = useCallback(async () => {
+    if (!toolbar.selectionSnapshot || !(await ensureAIConfigured())) return;
 
-    disposeActiveRequest(translateAbortControllerRef);
-    resetTranslateState();
-    setDialogSelectionSnapshot(selectionSnapshot);
-    setSelectionSnapshot(null);
+    translate.reset();
+    setTranslateSourceLanguage(DEFAULT_TRANSLATE_SOURCE_LANGUAGE);
+    setTranslateTargetLanguage(DEFAULT_TRANSLATE_TARGET_LANGUAGE);
+    toolbar.freezeSelection();
     setIsTranslateDialogOpen(true);
-  }
+  }, [toolbar, ensureAIConfigured, translate]);
 
-  async function handleSubmitMagicEdit() {
-    if (!dialogSelectionSnapshot || !document || magicStatus === 'streaming') {
-      return;
-    }
+  // --- 提交请求 ---
+  const handleSubmitMagicEdit = useCallback(async () => {
+    if (!toolbar.dialogSnapshot || !document || magicEdit.status === 'streaming') return;
 
-    disposeActiveRequest(magicEditAbortControllerRef);
+    await magicEdit.submit({
+      document_id: document.id,
+      selected_text: toolbar.dialogSnapshot.text,
+      instruction: magicInstruction,
+      context_before: toolbar.dialogSnapshot.contextBefore,
+      context_after: toolbar.dialogSnapshot.contextAfter,
+    });
+  }, [toolbar.dialogSnapshot, document, magicEdit, magicInstruction]);
 
-    const requestController = new AbortController();
-    magicEditAbortControllerRef.current = requestController;
-    setMagicStatus('streaming');
-    setMagicErrorMessage('');
-    setMagicResult('');
+  const handleSubmitTranslate = useCallback(async () => {
+    if (!toolbar.dialogSnapshot || !document || translate.status === 'streaming') return;
 
-    try {
-      const response = await streamMagicEdit(
-        {
-          document_id: document.id,
-          selected_text: dialogSelectionSnapshot.text,
-          instruction: magicInstruction,
-          context_before: dialogSelectionSnapshot.contextBefore,
-          context_after: dialogSelectionSnapshot.contextAfter,
-        },
-        {
-          signal: requestController.signal,
-          onChunk: (delta) => {
-            if (magicEditAbortControllerRef.current !== requestController) {
-              return;
-            }
+    await translate.submit({
+      document_id: document.id,
+      selected_text: toolbar.dialogSnapshot.text,
+      source_language: translateSourceLanguage,
+      target_language: translateTargetLanguage,
+      context_before: toolbar.dialogSnapshot.contextBefore,
+      context_after: toolbar.dialogSnapshot.contextAfter,
+    });
+  }, [toolbar.dialogSnapshot, document, translate, translateSourceLanguage, translateTargetLanguage]);
 
-            setMagicResult((currentResult) => currentResult + delta);
-          },
-        },
-      );
-
-      if (magicEditAbortControllerRef.current !== requestController) {
-        return;
-      }
-
-      setMagicResult(response.result);
-      setMagicStatus('completed');
-    } catch (error) {
-      if (magicEditAbortControllerRef.current !== requestController) {
-        return;
-      }
-
-      if (isAbortError(error)) {
-        setMagicStatus('aborted');
-        return;
-      }
-
-      setMagicStatus('idle');
-      setMagicErrorMessage(getErrorMessage(error, '魔法笔处理失败，请稍后重试'));
-    } finally {
-      if (magicEditAbortControllerRef.current === requestController) {
-        magicEditAbortControllerRef.current = null;
-      }
-    }
-  }
-
-  async function handleSubmitTranslate() {
-    if (!dialogSelectionSnapshot || !document || translateStatus === 'streaming') {
-      return;
-    }
-
-    disposeActiveRequest(translateAbortControllerRef);
-
-    const requestController = new AbortController();
-    translateAbortControllerRef.current = requestController;
-    setTranslateStatus('streaming');
-    setTranslateErrorMessage('');
-    setTranslateResult('');
-
-    try {
-      const response = await streamTranslation(
-        {
-          document_id: document.id,
-          selected_text: dialogSelectionSnapshot.text,
-          source_language: translateSourceLanguage,
-          target_language: translateTargetLanguage,
-          context_before: dialogSelectionSnapshot.contextBefore,
-          context_after: dialogSelectionSnapshot.contextAfter,
-        },
-        {
-          signal: requestController.signal,
-          onChunk: (delta) => {
-            if (translateAbortControllerRef.current !== requestController) {
-              return;
-            }
-
-            setTranslateResult((currentResult) => currentResult + delta);
-          },
-        },
-      );
-
-      if (translateAbortControllerRef.current !== requestController) {
-        return;
-      }
-
-      setTranslateResult(response.translated_text);
-      setTranslateStatus('completed');
-    } catch (error) {
-      if (translateAbortControllerRef.current !== requestController) {
-        return;
-      }
-
-      if (isAbortError(error)) {
-        setTranslateStatus('aborted');
-        return;
-      }
-
-      setTranslateStatus('idle');
-      setTranslateErrorMessage(getErrorMessage(error, '翻译处理失败，请稍后重试'));
-    } finally {
-      if (translateAbortControllerRef.current === requestController) {
-        translateAbortControllerRef.current = null;
-      }
-    }
-  }
-
-  async function copyResult(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({ description: 'AI 结果已复制到剪贴板' });
-    } catch {
-      toast({ description: '复制结果失败，请手动复制', variant: 'destructive' });
-    }
-  }
-
-  async function applyResult(text: string, mode: AIApplyMode, onClose: () => void) {
-    const view = editorViewRef.current;
-    if (!view || !dialogSelectionSnapshot) {
-      return;
-    }
-
-    applyAITextToEditor(view, dialogSelectionSnapshot, text, mode);
-    toast({ description: 'AI 结果已写入文档' });
-    onClose();
-  }
-
-  function handleEditorReady(view: EditorView) {
-    editorViewRef.current = view;
-    updateSelectionSnapshot(view);
-  }
-
-  return {
-    selectionActionState: selectionSnapshot
-      ? {
-          top: selectionSnapshot.toolbarTop,
-          left: selectionSnapshot.toolbarLeft,
-        }
-      : null,
-    isMagicEditDialogOpen,
-    isTranslateDialogOpen,
-    magicInstruction,
-    magicResult,
-    magicErrorMessage,
-    magicStatus,
-    translateSourceLanguage,
-    translateTargetLanguage,
-    translateResult,
-    translateErrorMessage,
-    translateStatus,
-    selectedText: dialogSelectionSnapshot?.text ?? selectionSnapshot?.text ?? '',
-    handleEditorReady,
-    handleSelectionChange: updateSelectionSnapshot,
-    handleOpenMagicEdit,
-    handleOpenTranslate,
-    handleMagicInstructionChange: setMagicInstruction,
-    handleTranslateSourceLanguageChange: setTranslateSourceLanguage,
-    handleTranslateTargetLanguageChange: setTranslateTargetLanguage,
-    handleMagicEditDialogOpenChange: (open) => {
-      if (!open) {
+  // --- 组装返回值 ---
+  return useMemo(
+    () => ({
+      selectionActionState: toolbar.selectionActionState,
+      isMagicEditDialogOpen,
+      isTranslateDialogOpen,
+      magicInstruction,
+      magicResult: magicEdit.result,
+      magicErrorMessage: magicEdit.errorMessage,
+      magicStatus: magicEdit.status,
+      translateSourceLanguage,
+      translateTargetLanguage,
+      translateResult: translate.result,
+      translateErrorMessage: translate.errorMessage,
+      translateStatus: translate.status,
+      selectedText: toolbar.selectedText,
+      handleEditorReady: toolbar.handleEditorReady,
+      handleSelectionChange: toolbar.handleSelectionChange,
+      handleOpenMagicEdit,
+      handleOpenTranslate,
+      handleMagicInstructionChange: setMagicInstruction,
+      handleTranslateSourceLanguageChange: setTranslateSourceLanguage,
+      handleTranslateTargetLanguageChange: setTranslateTargetLanguage,
+      handleMagicEditDialogOpenChange: (open: boolean) => {
+        if (!open) closeMagicEditDialog();
+      },
+      handleTranslateDialogOpenChange: (open: boolean) => {
+        if (!open) closeTranslateDialog();
+      },
+      handleSubmitMagicEdit,
+      handleSubmitTranslate,
+      handleAbortMagicEdit: magicEdit.abort,
+      handleAbortTranslate: translate.abort,
+      handleApplyMagicEditReplace: async () => applyResult(magicEdit.result, 'replace', closeMagicEditDialog),
+      handleApplyMagicEditInsert: async () => applyResult(magicEdit.result, 'insert', closeMagicEditDialog),
+      handleCopyMagicEditResult: async () => {
+        await copyAIResult(magicEdit.result);
         closeMagicEditDialog();
-      }
-    },
-    handleTranslateDialogOpenChange: (open) => {
-      if (!open) {
+      },
+      handleApplyTranslateReplace: async () => applyResult(translate.result, 'replace', closeTranslateDialog),
+      handleApplyTranslateInsert: async () => applyResult(translate.result, 'insert', closeTranslateDialog),
+      handleCopyTranslateResult: async () => {
+        await copyAIResult(translate.result);
         closeTranslateDialog();
-      }
-    },
-    handleSubmitMagicEdit,
-    handleSubmitTranslate,
-    handleAbortMagicEdit: () => {
-      magicEditAbortControllerRef.current?.abort();
-    },
-    handleAbortTranslate: () => {
-      translateAbortControllerRef.current?.abort();
-    },
-    handleApplyMagicEditReplace: async () => applyResult(magicResult, 'replace', closeMagicEditDialog),
-    handleApplyMagicEditInsert: async () => applyResult(magicResult, 'insert', closeMagicEditDialog),
-    handleCopyMagicEditResult: async () => {
-      await copyResult(magicResult);
-      closeMagicEditDialog();
-    },
-    handleApplyTranslateReplace: async () => applyResult(translateResult, 'replace', closeTranslateDialog),
-    handleApplyTranslateInsert: async () => applyResult(translateResult, 'insert', closeTranslateDialog),
-    handleCopyTranslateResult: async () => {
-      await copyResult(translateResult);
-      closeTranslateDialog();
-    },
-  };
+      },
+    }),
+    [
+      toolbar.selectionActionState,
+      toolbar.selectedText,
+      toolbar.handleEditorReady,
+      toolbar.handleSelectionChange,
+      isMagicEditDialogOpen,
+      isTranslateDialogOpen,
+      magicInstruction,
+      magicEdit,
+      translateSourceLanguage,
+      translateTargetLanguage,
+      translate,
+      handleOpenMagicEdit,
+      handleOpenTranslate,
+      handleSubmitMagicEdit,
+      handleSubmitTranslate,
+      closeMagicEditDialog,
+      closeTranslateDialog,
+      applyResult,
+    ],
+  );
 }

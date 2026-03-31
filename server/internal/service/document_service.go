@@ -15,7 +15,7 @@ import (
 const (
 	rootFolderDisplayName     = "根目录"
 	unknownFolderDisplayName  = "未知目录"
-	documentRevisionListLimit = 50
+	documentRevisionListLimit = 20
 )
 
 // DocumentServicer - 文档详情、历史版本与正文编辑服务接口。
