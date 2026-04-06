@@ -1,9 +1,4 @@
-// markdownPreview.ts - 对外暴露统一的 Markdown 预览引擎与类型
-export {
-  renderMarkdownPreview,
-  renderMarkdownToHtml,
-} from './markdown/createMarkdownEngine';
-
+// markdownPreview.ts - 对外暴露 Markdown 预览相关类型（渲染逻辑已移入 Web Worker）
 export type {
   MarkdownHeading,
   MarkdownPreviewChunk,
