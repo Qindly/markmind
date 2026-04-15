@@ -1,0 +1,61 @@
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+
+export const markdownPreviewSchema: Parameters<typeof rehypeSanitize>[0] = {
+  ...defaultSchema,
+  tagNames: Array.from(
+    new Set([
+      ...(defaultSchema.tagNames ?? []),
+      'article',
+      'details',
+      'div',
+      'kbd',
+      'mark',
+      'section',
+      'span',
+      'sub',
+      'summary',
+      'sup',
+    ]),
+  ),
+  attributes: {
+    ...defaultSchema.attributes,
+    '*': [...(defaultSchema.attributes?.['*'] ?? []), 'id', 'title'],
+    a: [...(defaultSchema.attributes?.a ?? []), 'title'],
+    article: [...(defaultSchema.attributes?.article ?? []), 'id', 'title'],
+    code: [
+      ...(defaultSchema.attributes?.code ?? []),
+      ['className', /^language-./, 'math-inline', 'math-display'] as const,
+    ],
+    details: [...(defaultSchema.attributes?.details ?? []), ['open', true] as const],
+    div: [...(defaultSchema.attributes?.div ?? []), 'id', 'title'],
+    h1: [...(defaultSchema.attributes?.h1 ?? []), 'id'],
+    h2: [...(defaultSchema.attributes?.h2 ?? []), 'id'],
+    h3: [...(defaultSchema.attributes?.h3 ?? []), 'id'],
+    h4: [...(defaultSchema.attributes?.h4 ?? []), 'id'],
+    h5: [...(defaultSchema.attributes?.h5 ?? []), 'id'],
+    h6: [...(defaultSchema.attributes?.h6 ?? []), 'id'],
+    img: [...(defaultSchema.attributes?.img ?? []), 'height', 'loading', 'title', 'width'],
+    input: [
+      ...(defaultSchema.attributes?.input ?? []),
+      ['type', 'checkbox'] as const,
+      ['checked', true] as const,
+      ['disabled', true] as const,
+    ],
+    kbd: [...(defaultSchema.attributes?.kbd ?? []), 'title'],
+    li: [
+      ...(defaultSchema.attributes?.li ?? []),
+      ['className', 'task-list-item'] as const,
+    ],
+    mark: [...(defaultSchema.attributes?.mark ?? []), 'title'],
+    ol: [...(defaultSchema.attributes?.ol ?? []), 'start'],
+    p: [...(defaultSchema.attributes?.p ?? []), 'id', 'title'],
+    section: [...(defaultSchema.attributes?.section ?? []), 'id', 'title'],
+    span: [...(defaultSchema.attributes?.span ?? []), 'id', 'title'],
+    td: [...(defaultSchema.attributes?.td ?? []), 'align'],
+    th: [...(defaultSchema.attributes?.th ?? []), 'align'],
+    ul: [
+      ...(defaultSchema.attributes?.ul ?? []),
+      ['className', 'contains-task-list'] as const,
+    ],
+  },
+};

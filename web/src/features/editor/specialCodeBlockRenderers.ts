@@ -12,6 +12,7 @@ export interface LoadedSpecialCodeBlockRenderer {
 export interface SpecialCodeBlockRenderer {
   language: string;
   displayName: string;
+  idleMessage: string;
   loadingMessage: string;
   emptyMessage: string;
   load: () => Promise<LoadedSpecialCodeBlockRenderer>;
@@ -61,6 +62,7 @@ export const specialCodeBlockRenderers: SpecialCodeBlockRenderer[] = [
   {
     language: 'mermaid',
     displayName: 'Mermaid',
+    idleMessage: '滚动到这里后会按需渲染 Mermaid 图表。',
     loadingMessage: '正在加载 Mermaid 渲染器...',
     emptyMessage: '请填写 Mermaid 图表内容。',
     load: loadMermaidRenderer,
@@ -69,6 +71,7 @@ export const specialCodeBlockRenderers: SpecialCodeBlockRenderer[] = [
   {
     language: 'echarts',
     displayName: 'ECharts',
+    idleMessage: '滚动到这里后会按需渲染 ECharts 图表。',
     loadingMessage: '正在加载 ECharts 渲染器...',
     emptyMessage: '请编写 `{}`、`option = {}` 或 `const option = {}`。',
     load: loadEChartsRenderer,

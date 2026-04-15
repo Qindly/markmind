@@ -72,12 +72,14 @@ export function EditorPage() {
         content={editor.content}
         document={editor.document}
         errorMessage={editor.errorMessage}
+        canManualSave={editor.canManualSave}
         isDirty={editor.isDirty}
         isSaving={editor.isSaving}
         onBack={editor.handleBack}
         onContentChange={editor.handleContentChange}
         onImagePaste={imageUpload.handleImagePaste}
         onSave={editor.handleSave}
+        revisionHistory={editor.revisionHistory}
         savePhase={editor.savePhase}
         selectionAI={selectionAI}
         statusMessage={editor.statusMessage}

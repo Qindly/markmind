@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { updateDocumentContent } from '../../api/document';
 import { toast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/getErrorMessage';
-import type { DocumentDetail, DocumentSavePhase } from '../../types/document';
+import type { DocumentContentSaveMode, DocumentDetail, DocumentSavePhase } from '../../types/document';
 import { getSaveStatusMessage } from './getSaveStatusMessage';
 import { usePendingChangesGuard } from './usePendingChangesGuard';
 const AUTO_SAVE_DELAY = 1500;
-type SaveMode = 'auto' | 'manual';
+type SaveMode = DocumentContentSaveMode;
 export interface UseDocumentSaveControllerOptions {
   documentID: number | null;
   document: DocumentDetail | null;
@@ -21,6 +21,7 @@ export interface UseDocumentSaveControllerResult {
   statusMessage: string;
   isDirty: boolean;
   isSaving: boolean;
+  canManualSave: boolean;
   handleContentChange: (value: string) => void;
   handleSave: () => Promise<void>;
 }
@@ -34,6 +35,7 @@ export function useDocumentSaveController({
   setErrorMessage,
 }: UseDocumentSaveControllerOptions): UseDocumentSaveControllerResult {
   const [savePhase, setSavePhase] = useState<DocumentSavePhase>('saved');
+  const [hasUnversionedContent, setHasUnversionedContent] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const latestDocumentRef = useRef<DocumentDetail | null>(null);
   const latestContentRef = useRef(content);
@@ -42,20 +44,24 @@ export function useDocumentSaveController({
   const autoSaveTimerRef = useRef<number | null>(null);
   const isSaving = savePhase === 'autosaving' || savePhase === 'manual-saving';
   const isDirty = document !== null && content !== document.content;
+  const canManualSave = isDirty || hasUnversionedContent;
   const statusMessage = useMemo(() => getSaveStatusMessage(savePhase, lastSavedAt), [lastSavedAt, savePhase]);
   latestContentRef.current = content;
   usePendingChangesGuard(isDirty || isSaving);
   useEffect(() => {
     latestDocumentRef.current = document;
     if (!document) {
+      setHasUnversionedContent(false);
       setLastSavedAt(null);
       return;
     }
+    setHasUnversionedContent(document.has_unversioned_content);
     if (content === document.content && !isSavingRef.current) {
       setLastSavedAt(document.updated_at);
       setSavePhase('saved');
     }
   }, [content, document]);
+
   const clearAutoSaveTimer = useCallback(() => {
     if (autoSaveTimerRef.current === null) {
       return;
@@ -63,6 +69,7 @@ export function useDocumentSaveController({
     window.clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = null;
   }, []);
+
   const persistContent = useCallback(
     async (mode: SaveMode) => {
       const currentDocument = latestDocumentRef.current;
@@ -71,10 +78,7 @@ export function useDocumentSaveController({
       }
 
       const contentToSave = latestContentRef.current;
-      if (contentToSave === currentDocument.content) {
-        if (mode === 'manual') {
-          setSavePhase('saved');
-        }
+      if (contentToSave === currentDocument.content && mode !== 'manual') {
         return;
       }
       if (isSavingRef.current) {
@@ -88,10 +92,14 @@ export function useDocumentSaveController({
       setErrorMessage('');
 
       try {
-        const response = await updateDocumentContent(documentID, { content: contentToSave });
+        const response = await updateDocumentContent(documentID, {
+          content: contentToSave,
+          save_mode: mode,
+        });
         const savedDocument = { ...response.document, content: contentToSave };
         latestDocumentRef.current = savedDocument;
         setDocument(savedDocument);
+        setHasUnversionedContent(response.document.has_unversioned_content);
         setLastSavedAt(response.document.updated_at);
 
         const hasNewChanges = latestContentRef.current !== contentToSave;
@@ -118,6 +126,7 @@ export function useDocumentSaveController({
     },
     [clearAutoSaveTimer, documentID, setDocument, setErrorMessage],
   );
+
   useEffect(() => {
     if (documentID === null || document === null || isSavingRef.current || !isDirty) {
       return;
@@ -130,6 +139,7 @@ export function useDocumentSaveController({
     return clearAutoSaveTimer;
   }, [clearAutoSaveTimer, document, documentID, isDirty, persistContent]);
   useEffect(() => clearAutoSaveTimer, [clearAutoSaveTimer]);
+  
   function handleContentChange(value: string) {
     setContent(value);
     setErrorMessage('');
@@ -138,5 +148,5 @@ export function useDocumentSaveController({
     );
   }
   async function handleSave() { await persistContent('manual'); }
-  return { savePhase, statusMessage, isDirty, isSaving, handleContentChange, handleSave };
+  return { savePhase, statusMessage, isDirty, isSaving, canManualSave, handleContentChange, handleSave };
 }

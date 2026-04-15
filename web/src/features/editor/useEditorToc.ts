@@ -9,14 +9,12 @@ const ACTIVE_HEADING_TOP_OFFSET = 144;
 const SCROLL_TARGET_TOP_OFFSET = 16;
 
 export interface UseEditorTocOptions {
-  html: string;
   headings: MarkdownHeading[];
-  hasContent: boolean;
+  renderedChunkSignature: string;
+  ensureHeadingChunkRendered: (headingId: string) => boolean;
 }
 
 export interface UseEditorTocResult {
-  previewHtml: string;
-  hasPreviewContent: boolean;
   tocTree: EditorTocNode[];
   activeHeadingId: string | null;
   expandedState: Record<string, boolean>;
@@ -94,9 +92,9 @@ function resolveViewportActiveHeadingId(headingElements: HTMLElement[]): string 
  * 返回值：预览 HTML、TOC 树、激活标题、折叠状态与交互回调。
  */
 export function useEditorToc({
-  html,
   headings,
-  hasContent,
+  renderedChunkSignature,
+  ensureHeadingChunkRendered,
 }: UseEditorTocOptions): UseEditorTocResult {
   const headingIdKey = useMemo(
     () => headings.map((heading) => heading.id).join('|'),
@@ -120,6 +118,7 @@ export function useEditorToc({
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const headingElementsRef = useRef<HTMLElement[]>([]);
   const lastAppliedHashSignatureRef = useRef('');
+  const pendingHeadingScrollAnimationFrameRef = useRef(0);
   const viewportSyncAnimationFrameRef = useRef(0);
   const syncActiveHeadingFromViewportRef = useRef<() => void>(() => undefined);
   const handleHashChangeRef = useRef<() => void>(() => undefined);
@@ -175,7 +174,9 @@ export function useEditorToc({
     [expandAncestorChain],
   );
 
-  const scrollToHeading = useCallback((headingId: string, smooth: boolean) => {
+  const performHeadingScroll = useCallback((headingId: string, smooth: boolean) => {
+    headingElementsRef.current = getPreviewHeadingElements(previewContainerRef.current);
+
     const targetHeading = headingElementsRef.current.find((heading) => heading.id === headingId);
     if (!targetHeading) {
       return false;
@@ -189,6 +190,29 @@ export function useEditorToc({
 
     return true;
   }, []);
+
+  const scrollToHeading = useCallback(
+    (headingId: string, smooth: boolean) => {
+      if (performHeadingScroll(headingId, smooth)) {
+        return true;
+      }
+
+      if (!ensureHeadingChunkRendered(headingId)) {
+        return false;
+      }
+
+      if (pendingHeadingScrollAnimationFrameRef.current) {
+        cancelAnimationFrame(pendingHeadingScrollAnimationFrameRef.current);
+      }
+
+      pendingHeadingScrollAnimationFrameRef.current = window.requestAnimationFrame(() => {
+        performHeadingScroll(headingId, smooth);
+      });
+
+      return true;
+    },
+    [ensureHeadingChunkRendered, performHeadingScroll],
+  );
 
   const handleSelectHeading = useCallback(
     (headingId: string) => {
@@ -276,7 +300,7 @@ export function useEditorToc({
     }
 
     syncActiveHeadingFromViewportRef.current();
-  }, [headingIdKey, headings.length, html]);
+  }, [headingIdKey, headings.length, renderedChunkSignature]);
 
   useEffect(() => {
     if (headings.length === 0) {
@@ -300,7 +324,7 @@ export function useEditorToc({
         expandAncestors: true,
       });
     }
-  }, [headingIdKey, headingIdSet, headings.length, html, scrollToHeading, setActiveHeading]);
+  }, [headingIdKey, headingIdSet, headings.length, renderedChunkSignature, scrollToHeading, setActiveHeading]);
 
   useEffect(() => {
     handleHashChangeRef.current = () => {
@@ -343,14 +367,15 @@ export function useEditorToc({
       if (viewportSyncAnimationFrameRef.current) {
         cancelAnimationFrame(viewportSyncAnimationFrameRef.current);
       }
+      if (pendingHeadingScrollAnimationFrameRef.current) {
+        cancelAnimationFrame(pendingHeadingScrollAnimationFrameRef.current);
+      }
       window.removeEventListener('scroll', handleViewportChange);
       window.removeEventListener('resize', handleViewportChange);
     };
   }, []);
 
   return {
-    previewHtml: html,
-    hasPreviewContent: hasContent,
     tocTree,
     activeHeadingId,
     expandedState,

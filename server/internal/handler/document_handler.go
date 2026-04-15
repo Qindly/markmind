@@ -1,4 +1,4 @@
-﻿// document_handler.go - 处理文档详情查询与正文保存请求
+// document_handler.go - 处理文档详情、历史版本与正文保存请求
 package handler
 
 import (
@@ -12,12 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DocumentHandler - 文档详情与正文编辑请求处理器。
+// DocumentHandler - 文档详情、历史版本与正文编辑请求处理器。
 type DocumentHandler struct {
 	documentService service.DocumentServicer
 }
 
-// NewDocumentHandler - 创建文档详情与正文编辑请求处理器。
+// NewDocumentHandler - 创建文档详情、历史版本与正文编辑请求处理器。
 // 参数 documentService: 文档服务。
 // 返回值：文档请求处理器实例。
 func NewDocumentHandler(documentService service.DocumentServicer) *DocumentHandler {
@@ -112,6 +112,101 @@ func (handler *DocumentHandler) UpdateDocumentContent(ctx *gin.Context) {
 	WriteSuccess(ctx, http.StatusOK, response)
 }
 
+// ListDocumentRevisions - 返回当前用户指定文档的历史版本列表。
+// 参数 ctx: Gin 请求上下文。
+func (handler *DocumentHandler) ListDocumentRevisions(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	documentID, ok := parseDocumentID(ctx)
+	if !ok {
+		return
+	}
+
+	response, err := handler.documentService.ListDocumentRevisions(ctx.Request.Context(), userID, documentID)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}
+
+// GetDocumentRevisionDiff - 返回两个历史版本之间的文本 diff。
+// 参数 ctx: Gin 请求上下文。
+func (handler *DocumentHandler) GetDocumentRevisionDiff(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	documentID, ok := parseDocumentID(ctx)
+	if !ok {
+		return
+	}
+
+	fromRevisionID, ok := parseRequiredPositiveInt64Query(ctx, "from_revision_id")
+	if !ok {
+		return
+	}
+
+	toRevisionID, ok := parseRequiredPositiveInt64Query(ctx, "to_revision_id")
+	if !ok {
+		return
+	}
+
+	response, err := handler.documentService.GetDocumentRevisionDiff(
+		ctx.Request.Context(),
+		userID,
+		documentID,
+		dto.DocumentRevisionDiffRequest{
+			FromRevisionID: fromRevisionID,
+			ToRevisionID:   toRevisionID,
+		},
+	)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}
+
+// RollbackDocumentRevision - 将当前文档回滚到指定历史版本。
+// 参数 ctx: Gin 请求上下文。
+func (handler *DocumentHandler) RollbackDocumentRevision(ctx *gin.Context) {
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		WriteError(ctx, http.StatusUnauthorized, appconst.ErrCodeUnauthorized, appconst.ErrUnauthorized.Error())
+		return
+	}
+
+	documentID, ok := parseDocumentID(ctx)
+	if !ok {
+		return
+	}
+
+	revisionID, ok := parseRevisionID(ctx)
+	if !ok {
+		return
+	}
+
+	response, err := handler.documentService.RollbackDocumentRevision(ctx.Request.Context(), userID, documentID, revisionID)
+	if err != nil {
+		status, code, message := mapBusinessError(err)
+		WriteError(ctx, status, code, message)
+		return
+	}
+
+	WriteSuccess(ctx, http.StatusOK, response)
+}
+
 func parseDocumentID(ctx *gin.Context) (int64, bool) {
 	documentID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 	if err != nil || documentID <= 0 {
@@ -120,6 +215,16 @@ func parseDocumentID(ctx *gin.Context) (int64, bool) {
 	}
 
 	return documentID, true
+}
+
+func parseRevisionID(ctx *gin.Context) (int64, bool) {
+	revisionID, err := strconv.ParseInt(ctx.Param("revision_id"), 10, 64)
+	if err != nil || revisionID <= 0 {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return 0, false
+	}
+
+	return revisionID, true
 }
 
 func parseOptionalFolderID(ctx *gin.Context, queryKey string) (*int64, bool) {
@@ -135,6 +240,22 @@ func parseOptionalFolderID(ctx *gin.Context, queryKey string) (*int64, bool) {
 	}
 
 	return &folderID, true
+}
+
+func parseRequiredPositiveInt64Query(ctx *gin.Context, queryKey string) (int64, bool) {
+	rawValue := ctx.Query(queryKey)
+	if rawValue == "" {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return 0, false
+	}
+
+	parsedValue, err := strconv.ParseInt(rawValue, 10, 64)
+	if err != nil || parsedValue <= 0 {
+		WriteError(ctx, http.StatusBadRequest, appconst.ErrCodeInvalidParams, appconst.ErrInvalidParams.Error())
+		return 0, false
+	}
+
+	return parsedValue, true
 }
 
 func isValidDocumentSearchScope(scope dto.DocumentSearchScope) bool {

@@ -50,7 +50,7 @@ func (service *dashboardService) GetDashboard(ctx context.Context, userID int64)
 		return nil, err
 	}
 
-	documents, err := service.documentRepository.ListDocumentsByUserID(ctx, userID)
+	documents, err := service.documentRepository.ListDocumentSummariesByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,13 @@ func (service *dashboardService) GetDashboard(ctx context.Context, userID int64)
 	}
 
 	for _, document := range documents {
-		response.Documents = append(response.Documents, toDocumentSummary(document))
+		response.Documents = append(response.Documents, dto.DocumentSummaryResponse{
+			ID:        document.ID,
+			FolderID:  document.FolderID,
+			Title:     document.Title,
+			CreatedAt: document.CreatedAt,
+			UpdatedAt: document.UpdatedAt,
+		})
 	}
 
 	return response, nil

@@ -1,150 +1,222 @@
-﻿// useSpecialCodeBlockPreview.ts - 统一分发并增强预览区中的 Mermaid、ECharts 等特殊代码块
+// useSpecialCodeBlockPreview.ts - lazily render special preview blocks when they approach the viewport
 import { useEffect, type RefObject } from 'react';
 
+import type { MarkdownSpecialBlock } from '../../lib/markdownPreview';
 import { getSpecialCodeBlockRenderer } from './specialCodeBlockRenderers';
 
-const CODE_BLOCK_SELECTOR = 'pre > code';
+const SPECIAL_BLOCK_SELECTOR = '[data-special-block="true"]';
+const SPECIAL_VIEWPORT_SELECTOR = '[data-special-viewport="true"]';
+const SPECIAL_BLOCK_ROOT_MARGIN = '240px 0px 240px 0px';
 
 export interface UseSpecialCodeBlockPreviewOptions {
-  html: string;
   previewContainerRef: RefObject<HTMLDivElement>;
+  specialBlocks: MarkdownSpecialBlock[];
 }
 
-// resolveCodeBlockLanguage - 从代码块 class 中提取 language 前缀对应的语言名称。
-// 参数 codeBlockElement: 当前代码块元素。
-// 返回值：标准化后的语言名，未命中时返回空字符串。
-function resolveCodeBlockLanguage(codeBlockElement: HTMLElement): string {
-  const languageClassName = Array.from(codeBlockElement.classList).find((className) =>
-    className.startsWith('language-'),
-  );
-
-  return languageClassName?.replace(/^language-/, '').toLowerCase() ?? '';
+function getSpecialBlockID(blockElement: HTMLElement): string {
+  return blockElement.dataset.blockId ?? '';
 }
 
-// createSpecialBlockElement - 创建特殊代码块渲染成功后的外层容器和视口节点。
-// 参数 language: 当前渲染器对应的语言名。
-// 返回值：用于承载渲染结果的块级容器与内部视口节点。
-function createSpecialBlockElement(language: string) {
-  const blockElement = document.createElement('div');
-  blockElement.className = `markmind-special-block markmind-special-block-${language}`;
-
+function createSpecialBlockViewportElement(language: string) {
   const viewportElement = document.createElement('div');
   viewportElement.className = `markmind-special-viewport markmind-special-viewport-${language}`;
-  blockElement.appendChild(viewportElement);
-
-  return {
-    blockElement,
-    viewportElement,
-  };
+  viewportElement.dataset.specialViewport = 'true';
+  return viewportElement;
 }
 
-// setSpecialBlockLoadingState - 为特殊代码块容器写入加载中的占位内容。
-// 参数 viewportElement: 当前渲染容器内部的视口节点。
-// 参数 message: 需要展示的加载文案。
+function createSpecialBlockNoticeElement(className: string, message: string) {
+  const noticeElement = document.createElement('div');
+  noticeElement.className = className;
+  noticeElement.textContent = message;
+  return noticeElement;
+}
+
+function ensureSpecialBlockViewport(blockElement: HTMLElement, language: string): HTMLDivElement {
+  const existingViewport = blockElement.querySelector<HTMLDivElement>(SPECIAL_VIEWPORT_SELECTOR);
+  if (existingViewport) {
+    return existingViewport;
+  }
+
+  const viewportElement = createSpecialBlockViewportElement(language);
+  blockElement.replaceChildren(viewportElement);
+  return viewportElement;
+}
+
+function setSpecialBlockIdleState(viewportElement: HTMLDivElement, message: string) {
+  viewportElement.replaceChildren(createSpecialBlockNoticeElement('markmind-special-loading', message));
+}
+
 function setSpecialBlockLoadingState(viewportElement: HTMLDivElement, message: string) {
-  const loadingElement = document.createElement('div');
-  loadingElement.className = 'markmind-special-loading';
-  loadingElement.textContent = message;
-  viewportElement.replaceChildren(loadingElement);
+  viewportElement.replaceChildren(createSpecialBlockNoticeElement('markmind-special-loading', message));
 }
 
-// createSpecialBlockErrorNotice - 构造特殊代码块渲染失败提示节点。
-// 参数 displayName: 当前渲染器对应的展示名称。
-// 参数 message: 需要展示给用户的错误信息。
-// 返回值：插入到预览区中的错误提示节点。
-function createSpecialBlockErrorNotice(displayName: string, message: string): HTMLDivElement {
-  const errorElement = document.createElement('div');
-  errorElement.className = 'markmind-special-error';
-  errorElement.textContent = `${displayName} 渲染失败：${message}`;
-
-  return errorElement;
+function setSpecialBlockErrorState(
+  viewportElement: HTMLDivElement,
+  displayName: string,
+  message: string,
+) {
+  viewportElement.replaceChildren(
+    createSpecialBlockNoticeElement('markmind-special-error', `${displayName} 渲染失败：${message}`),
+  );
 }
 
-/**
- * useSpecialCodeBlockPreview - 扫描预览区代码块并分发给已注册的特殊渲染器。
- * 参数 options: 当前预览 HTML 与预览容器引用。
- * 返回值：无，副作用为原地增强预览区 DOM。
- */
 export function useSpecialCodeBlockPreview({
-  html,
   previewContainerRef,
+  specialBlocks,
 }: UseSpecialCodeBlockPreviewOptions) {
   useEffect(() => {
     const previewContainer = previewContainerRef.current;
-    if (!previewContainer || !html) {
+    if (!previewContainer || specialBlocks.length === 0) {
       return;
     }
 
-    const codeBlockElements = Array.from(previewContainer.querySelectorAll<HTMLElement>(CODE_BLOCK_SELECTOR));
-    if (codeBlockElements.length === 0) {
-      return;
-    }
-
+    const specialBlockMap = new Map(specialBlocks.map((specialBlock) => [specialBlock.id, specialBlock]));
     let isDisposed = false;
-    const cleanupList: Array<() => void> = [];
+    const cleanupMap = new Map<string, () => void>();
 
-    async function enhanceCodeBlock(codeBlockElement: HTMLElement) {
-      const language = resolveCodeBlockLanguage(codeBlockElement);
-      const renderer = getSpecialCodeBlockRenderer(language);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          const blockElement = entry.target as HTMLElement;
+          const blockID = getSpecialBlockID(blockElement);
+          const specialBlock = specialBlockMap.get(blockID);
+          if (!blockID || !specialBlock) {
+            observer.unobserve(blockElement);
+            return;
+          }
+
+          const renderer = getSpecialCodeBlockRenderer(specialBlock.language);
+          if (!renderer) {
+            observer.unobserve(blockElement);
+            return;
+          }
+
+          const viewportElement = ensureSpecialBlockViewport(blockElement, renderer.language);
+          if (!specialBlock.code.trim()) {
+            blockElement.dataset.renderState = 'error';
+            setSpecialBlockErrorState(viewportElement, renderer.displayName, renderer.emptyMessage);
+            observer.unobserve(blockElement);
+            return;
+          }
+
+          if (blockElement.dataset.renderState === 'loading' || blockElement.dataset.renderState === 'success') {
+            observer.unobserve(blockElement);
+            return;
+          }
+
+          blockElement.dataset.renderState = 'loading';
+          setSpecialBlockLoadingState(viewportElement, renderer.loadingMessage);
+          observer.unobserve(blockElement);
+
+          void (async () => {
+            try {
+              const loadedRenderer = await renderer.load();
+              if (isDisposed || !blockElement.isConnected) {
+                return;
+              }
+
+              const cleanup = await loadedRenderer.render({
+                source: specialBlock.code,
+                viewportElement,
+              });
+
+              if (isDisposed || !blockElement.isConnected) {
+                cleanup?.();
+                return;
+              }
+
+              blockElement.dataset.renderState = 'success';
+              if (cleanup) {
+                cleanupMap.set(blockID, cleanup);
+              }
+            } catch (error) {
+              if (isDisposed || !blockElement.isConnected) {
+                return;
+              }
+
+              blockElement.dataset.renderState = 'error';
+              setSpecialBlockErrorState(viewportElement, renderer.displayName, renderer.getErrorMessage(error));
+            }
+          })();
+        });
+      },
+      {
+        root: null,
+        rootMargin: SPECIAL_BLOCK_ROOT_MARGIN,
+        threshold: 0.01,
+      },
+    );
+
+    const hydrateSpecialBlockElement = (blockElement: HTMLElement) => {
+      const blockID = getSpecialBlockID(blockElement);
+      if (!blockID || cleanupMap.has(blockID)) {
+        return;
+      }
+
+      const specialBlock = specialBlockMap.get(blockID);
+      if (!specialBlock) {
+        return;
+      }
+
+      const renderer = getSpecialCodeBlockRenderer(specialBlock.language);
       if (!renderer) {
         return;
       }
 
-      const preElement = codeBlockElement.closest('pre');
-      const source = codeBlockElement.textContent?.trim() ?? '';
-      if (!preElement) {
+      const viewportElement = ensureSpecialBlockViewport(blockElement, renderer.language);
+      if (!specialBlock.code.trim()) {
+        blockElement.dataset.renderState = 'error';
+        setSpecialBlockErrorState(viewportElement, renderer.displayName, renderer.emptyMessage);
         return;
       }
 
-      if (!source) {
-        preElement.classList.add('markmind-special-fallback');
-        preElement.before(createSpecialBlockErrorNotice(renderer.displayName, renderer.emptyMessage));
+      if (blockElement.dataset.renderState === 'success' || blockElement.dataset.renderState === 'loading') {
         return;
       }
 
-      const fallbackPreElement = preElement.cloneNode(true) as HTMLPreElement;
-      const { blockElement, viewportElement } = createSpecialBlockElement(language);
-      setSpecialBlockLoadingState(viewportElement, renderer.loadingMessage);
-      preElement.replaceWith(blockElement);
+      blockElement.dataset.renderState = 'idle';
+      setSpecialBlockIdleState(viewportElement, renderer.idleMessage);
+      observer.observe(blockElement);
+    };
 
-      try {
-        const loadedRenderer = await renderer.load();
-        if (isDisposed || !blockElement.isConnected) {
-          return;
-        }
+    const mutationObserver = new MutationObserver((mutationList) => {
+      mutationList.forEach((mutation) => {
+        mutation.addedNodes.forEach((addedNode) => {
+          if (!(addedNode instanceof HTMLElement)) {
+            return;
+          }
 
-        const cleanup = await loadedRenderer.render({
-          source,
-          viewportElement,
+          if (addedNode.matches(SPECIAL_BLOCK_SELECTOR)) {
+            hydrateSpecialBlockElement(addedNode);
+          }
+
+          addedNode.querySelectorAll<HTMLElement>(SPECIAL_BLOCK_SELECTOR).forEach((blockElement) => {
+            hydrateSpecialBlockElement(blockElement);
+          });
         });
+      });
+    });
 
-        if (isDisposed || !blockElement.isConnected) {
-          cleanup?.();
-          return;
-        }
+    previewContainer.querySelectorAll<HTMLElement>(SPECIAL_BLOCK_SELECTOR).forEach((blockElement) => {
+      hydrateSpecialBlockElement(blockElement);
+    });
 
-        if (cleanup) {
-          cleanupList.push(cleanup);
-        }
-      } catch (error) {
-        if (isDisposed || !blockElement.isConnected) {
-          return;
-        }
-
-        blockElement.replaceWith(
-          createSpecialBlockErrorNotice(renderer.displayName, renderer.getErrorMessage(error)),
-          fallbackPreElement,
-        );
-      }
-    }
-
-    void Promise.all(codeBlockElements.map((codeBlockElement) => enhanceCodeBlock(codeBlockElement)));
+    mutationObserver.observe(previewContainer, {
+      childList: true,
+      subtree: true,
+    });
 
     return () => {
       isDisposed = true;
-      cleanupList.forEach((cleanup) => {
+      mutationObserver.disconnect();
+      observer.disconnect();
+      cleanupMap.forEach((cleanup) => {
         cleanup();
       });
     };
-  }, [html, previewContainerRef]);
+  }, [previewContainerRef, specialBlocks]);
 }
